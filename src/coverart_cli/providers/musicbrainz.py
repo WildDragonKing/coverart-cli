@@ -6,7 +6,8 @@ import logging
 import time
 import urllib.parse
 
-from coverart_cli.providers.base import CoverProvider, ProviderResult
+from coverart_cli.providers.base import CoverProvider, ProviderResult, _default_user_agent
+from coverart_cli.tagging import MIN_COVER_BYTES
 
 log = logging.getLogger(__name__)
 
@@ -19,11 +20,12 @@ MB_MIN_DELAY = 1.1
 class MusicBrainzProvider(CoverProvider):
     name = "musicbrainz"
 
-    def __init__(self, user_agent: str = "coverart-cli/0.1.0", search_limit: int = 5) -> None:
+    def __init__(self, user_agent: str | None = None, search_limit: int = 5) -> None:
         # MusicBrainz REQUIRES a meaningful UA with contact info; nudge users.
-        if "contact" not in user_agent.lower() and "@" not in user_agent:
+        ua = user_agent or _default_user_agent()
+        if "contact" not in ua.lower() and "@" not in ua and "https://" not in ua:
             log.debug("musicbrainz UA should include contact info per their TOS")
-        self.user_agent = user_agent
+        self.user_agent = ua
         self.search_limit = search_limit
         self._last_request = 0.0
 
@@ -36,14 +38,10 @@ class MusicBrainzProvider(CoverProvider):
             mbid = rg.get("id")
             if not mbid:
                 continue
-            for endpoint in ("release-group", "release"):
-                # release-group front first (album-level), then individual release fallback
-                if endpoint == "release":
-                    continue  # release-group is usually enough; skip per-release loop
-                caa_url = f"{CAA_API}{endpoint}/{mbid}/front-1000"
-                img = self._http_get(caa_url, timeout=25)
-                if img and len(img) > 2000:
-                    return ProviderResult(image_bytes=img, source=self.name, image_url=caa_url)
+            caa_url = f"{CAA_API}release-group/{mbid}/front-1000"
+            img = self._http_get(caa_url, timeout=25)
+            if img and len(img) >= MIN_COVER_BYTES:
+                return ProviderResult(image_bytes=img, source=self.name, image_url=caa_url)
         return None
 
     def _search_release_groups(self, artist: str, album: str) -> list[dict]:

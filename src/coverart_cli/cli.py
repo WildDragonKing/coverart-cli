@@ -24,8 +24,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="coverart",
         description=(
-            "Fetch missing album cover art from Last.fm and MusicBrainz, "
-            "then embed it into MP3/M4A files and write a cover.jpg sidecar."
+            "Fetch missing album cover art from Last.fm, iTunes, Deezer and "
+            "MusicBrainz; embed it into MP3 / M4A / FLAC / Ogg files and write "
+            "a cover.jpg sidecar in one pass."
         ),
         epilog=(
             "examples:\n"

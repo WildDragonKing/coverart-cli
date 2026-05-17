@@ -41,13 +41,19 @@ def test_musicbrainz_escape_strips_lucene_special_chars() -> None:
 def test_itunes_provider_instantiable() -> None:
     from coverart_cli.providers import ITunesProvider
 
-    ITunesProvider()  # no key required
+    p = ITunesProvider()  # default
+    assert p.user_agent
+    p2 = ITunesProvider(user_agent="myua/1.0")  # explicit UA also works (regression)
+    assert p2.user_agent == "myua/1.0"
 
 
 def test_deezer_provider_instantiable() -> None:
     from coverart_cli.providers import DeezerProvider
 
-    DeezerProvider()
+    p = DeezerProvider()
+    assert p.user_agent
+    p2 = DeezerProvider(user_agent="myua/1.0")
+    assert p2.user_agent == "myua/1.0"
 
 
 def test_deezer_escape_strips_quotes() -> None:

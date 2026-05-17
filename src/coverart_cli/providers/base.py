@@ -11,6 +11,14 @@ from dataclasses import dataclass
 log = logging.getLogger(__name__)
 
 
+def _default_user_agent() -> str:
+    """Build a sensible default UA string from the current package version."""
+    # Local import to avoid a circular dep at module import time.
+    from coverart_cli import __version__
+
+    return f"coverart-cli/{__version__} (+https://github.com/WildDragonKing/coverart-cli)"
+
+
 @dataclass(frozen=True)
 class ProviderResult:
     """Cover art bytes + provenance info."""
@@ -24,7 +32,7 @@ class CoverProvider(ABC):
     """Abstract provider — subclasses implement fetch()."""
 
     name: str = "base"
-    user_agent: str = "coverart-cli/0.1.0"
+    user_agent: str = "coverart-cli"  # subclasses override in __init__
 
     @abstractmethod
     def fetch(self, artist: str, album: str) -> ProviderResult | None:

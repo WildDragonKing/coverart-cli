@@ -91,9 +91,11 @@ def scan_library(root: Path, *, embed_thumbs: bool = True) -> list[AlbumEntry]:
     for d in sorted(root.rglob("*")):
         if not d.is_dir():
             continue
-        # Skip if any directory in the path (within the library) starts with a dot.
-        rel_parts = d.relative_to(root).parts if root in (d, *d.parents) else d.parts
-        if any(p.startswith(".") for p in rel_parts):
+        try:
+            rel = d.relative_to(root)
+        except ValueError:
+            continue
+        if any(part.startswith(".") for part in rel.parts):
             continue
         try:
             audio_files = [
@@ -122,7 +124,7 @@ def scan_library(root: Path, *, embed_thumbs: bool = True) -> list[AlbumEntry]:
             AlbumEntry(
                 artist=artist,
                 album=album,
-                path=str(d.relative_to(root)) if root in d.parents else str(d),
+                path=str(rel),
                 has_cover=has_any_cover,
                 source=_detect_source(d, has_any_cover),
                 file_count=len(audio_files),

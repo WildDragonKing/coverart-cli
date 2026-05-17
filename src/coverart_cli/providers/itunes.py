@@ -5,7 +5,8 @@ import json
 import logging
 import urllib.parse
 
-from coverart_cli.providers.base import CoverProvider, ProviderResult
+from coverart_cli.providers.base import CoverProvider, ProviderResult, _default_user_agent
+from coverart_cli.tagging import MIN_COVER_BYTES
 
 log = logging.getLogger(__name__)
 
@@ -16,6 +17,9 @@ class ITunesProvider(CoverProvider):
     """Search Apple's public iTunes catalogue. Returns the largest available artwork."""
 
     name = "itunes"
+
+    def __init__(self, user_agent: str | None = None) -> None:
+        self.user_agent = user_agent or _default_user_agent()
 
     def fetch(self, artist: str, album: str) -> ProviderResult | None:
         params = {
@@ -50,6 +54,6 @@ class ITunesProvider(CoverProvider):
                 "100x100", "1000x1000"
             )
             img = self._http_get(hi_res, timeout=25)
-            if img and len(img) >= 2000:
+            if img and len(img) >= MIN_COVER_BYTES:
                 return ProviderResult(image_bytes=img, source=self.name, image_url=hi_res)
         return None

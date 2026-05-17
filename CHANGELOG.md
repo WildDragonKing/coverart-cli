@@ -12,16 +12,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **TOML config file** support — `~/.config/coverart-cli/config.toml`,
   `./coverart.toml`, or `--config PATH`. CLI flags still override the config.
 - **`py.typed`** marker file for PEP 561 — type checkers can now see our types.
+- **Public library API** explicitly defined via `__all__` in
+  `coverart_cli/__init__.py`. You can now do
+  `from coverart_cli import RunOptions, run, ITunesProvider`.
 - **`.editorconfig`** for cross-IDE consistency.
 - **`.pre-commit-config.yaml`** with ruff + ruff-format + standard checks.
 - **`SECURITY.md`** with private vulnerability reporting link.
 - **PyPI release workflow** (`.github/workflows/release.yml`) — push a
   `v*` tag and the package is built and uploaded via PyPI Trusted Publishing.
+  Includes a **`needs: test`** gate so a red main can't ship a release.
 - **Dependabot** monthly checks for GitHub Actions and pip.
 
 ### Changed
 
 - Minimum Python is now **3.11** (was 3.10) — needed for stdlib `tomllib`.
+- Metadata now uses **PEP 639 SPDX** (`license = "MIT"` + `license-files`),
+  no more deprecated `License ::` classifier.
+- Description and CLI help text now reflect the actual provider and format
+  coverage (4 providers, 5 formats).
+- All providers share a single `_default_user_agent()` derived from
+  `__version__` — no more stale `0.1.0` strings hard-coded in defaults.
+- `iTunesProvider` and `DeezerProvider` correctly accept `user_agent=`
+  (was silently ignored, broke library usage).
+- `MusicBrainzProvider` dead `release` fallback branch removed.
+- Size threshold for accepted covers unified across providers via
+  `tagging.MIN_COVER_BYTES`.
+- `scan_library` path-traversal logic simplified to `relative_to` +
+  `ValueError` guard.
 
 ## [0.2.0] - 2026-05-17
 

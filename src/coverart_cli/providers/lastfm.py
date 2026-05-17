@@ -5,7 +5,8 @@ import json
 import logging
 import urllib.parse
 
-from coverart_cli.providers.base import CoverProvider, ProviderResult
+from coverart_cli.providers.base import CoverProvider, ProviderResult, _default_user_agent
+from coverart_cli.tagging import MIN_COVER_BYTES
 
 log = logging.getLogger(__name__)
 
@@ -19,11 +20,11 @@ PLACEHOLDER_HASHES = frozenset({
 class LastFmProvider(CoverProvider):
     name = "lastfm"
 
-    def __init__(self, api_key: str, user_agent: str = "coverart-cli/0.1.0") -> None:
+    def __init__(self, api_key: str, user_agent: str | None = None) -> None:
         if not api_key:
             raise ValueError("Last.fm API key is required")
         self.api_key = api_key
-        self.user_agent = user_agent
+        self.user_agent = user_agent or _default_user_agent()
 
     def fetch(self, artist: str, album: str) -> ProviderResult | None:
         url = self._build_info_url(artist, album)
@@ -41,7 +42,7 @@ class LastFmProvider(CoverProvider):
         if not image_url:
             return None
         img = self._http_get(image_url, timeout=25)
-        if not img or len(img) < 2000:
+        if not img or len(img) < MIN_COVER_BYTES:
             return None
         return ProviderResult(image_bytes=img, source=self.name, image_url=image_url)
 
