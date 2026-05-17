@@ -4,9 +4,19 @@ from __future__ import annotations
 import logging
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+
+
+def _safe_url_for_log(url: str) -> str:
+    """Return a URL safe for logs (scheme + host + path only)."""
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+    except Exception:
+        return "<invalid-url>"
 
 log = logging.getLogger(__name__)
 
@@ -55,19 +65,22 @@ class CoverProvider(ABC):
                     return r.read()
             except urllib.error.HTTPError as e:
                 if e.code in (429, 500, 502, 503, 504) and attempt < retries:
-                    log.debug("%s transient %s, retry %d/%d", url, e.code, attempt + 1, retries)
+                    log.debug(
+                        "%s transient %s, retry %d/%d",
+                        _safe_url_for_log(url), e.code, attempt + 1, retries,
+                    )
                     time.sleep(backoff * (2**attempt))
                     last_err = e
                     continue
-                log.debug("%s HTTP %s", url, e.code)
+                log.debug("%s HTTP %s", _safe_url_for_log(url), e.code)
                 return None
             except (urllib.error.URLError, TimeoutError) as e:
                 if attempt < retries:
                     time.sleep(backoff * (2**attempt))
                     last_err = e
                     continue
-                log.debug("%s network error: %s", url, e)
+                log.debug("%s network error: %s", _safe_url_for_log(url), e)
                 return None
         if last_err:
-            log.debug("%s exhausted retries: %s", url, last_err)
+            log.debug("%s exhausted retries: %s", _safe_url_for_log(url), last_err)
         return None

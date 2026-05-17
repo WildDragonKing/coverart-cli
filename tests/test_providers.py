@@ -60,3 +60,39 @@ def test_deezer_escape_strips_quotes() -> None:
     from coverart_cli.providers import DeezerProvider
 
     assert DeezerProvider._escape('"Foo" bar') == "Foo  bar"
+
+
+def test_safe_url_for_log_strips_api_key() -> None:
+    from coverart_cli.providers.base import _safe_url_for_log
+
+    url = "https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=SECRET123"
+    sanitized = _safe_url_for_log(url)
+    assert "SECRET123" not in sanitized
+    assert "api_key" not in sanitized
+    assert sanitized == "https://ws.audioscrobbler.com/2.0/"
+
+
+def test_safe_url_for_log_strips_entire_query() -> None:
+    from coverart_cli.providers.base import _safe_url_for_log
+
+    url = "https://itunes.apple.com/search?term=Pink+Floyd&entity=album"
+    sanitized = _safe_url_for_log(url)
+    assert "?" not in sanitized
+    assert "term" not in sanitized
+    assert sanitized == "https://itunes.apple.com/search"
+
+
+def test_safe_url_for_log_keeps_path() -> None:
+    from coverart_cli.providers.base import _safe_url_for_log
+
+    url = "https://coverartarchive.org/release-group/abcd-1234/front-1000"
+    sanitized = _safe_url_for_log(url)
+    assert sanitized == url  # no query → unchanged
+
+
+def test_safe_url_for_log_handles_garbage() -> None:
+    from coverart_cli.providers.base import _safe_url_for_log
+
+    # Anything urlsplit can parse should round-trip safely; nothing should crash.
+    assert "<invalid-url>" not in _safe_url_for_log("https://example.com")
+    assert _safe_url_for_log("") == ""
