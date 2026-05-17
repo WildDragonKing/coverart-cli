@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/WildDragonKing/coverart-cli/compare/v0.3.0...v0.4.0) (2026-05-17)
+
+
+### Features
+
+* add release-please for merge-driven version bumps ([#9](https://github.com/WildDragonKing/coverart-cli/issues/9)) ([28ec876](https://github.com/WildDragonKing/coverart-cli/commit/28ec8768d70e22c50ebd58e6ca170fb65393eb6c))
+* auto-enable squash auto-merge + CodeRabbit config ([#11](https://github.com/WildDragonKing/coverart-cli/issues/11)) ([3756926](https://github.com/WildDragonKing/coverart-cli/commit/37569263e397e61d34d3cd865f4935c94432e3a9))
+
+
+### Bug Fixes
+
+* drop failing approve step from Dependabot auto-merge ([#12](https://github.com/WildDragonKing/coverart-cli/issues/12)) ([c2f984d](https://github.com/WildDragonKing/coverart-cli/commit/c2f984d7417ee811bc80e90ec9b3d2f587ffddb2))
+
 ## [0.3.0] - 2026-05-17
 
 ### Added
