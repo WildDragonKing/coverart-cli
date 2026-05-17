@@ -24,7 +24,7 @@ HTML coverage report so you can see what's still missing.
 ## Install
 
 ```bash
-pipx install git+https://github.com/WildDragonKing/coverart-cli
+pipx install coverart-cli
 ```
 
 ## Use
