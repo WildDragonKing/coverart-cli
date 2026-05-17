@@ -1,0 +1,65 @@
+"""Provider interface — fetch cover art for a given artist + album."""
+from __future__ import annotations
+
+import logging
+import time
+import urllib.error
+import urllib.request
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ProviderResult:
+    """Cover art bytes + provenance info."""
+
+    image_bytes: bytes
+    source: str
+    image_url: str
+
+
+class CoverProvider(ABC):
+    """Abstract provider — subclasses implement fetch()."""
+
+    name: str = "base"
+    user_agent: str = "coverart-cli/0.1.0"
+
+    @abstractmethod
+    def fetch(self, artist: str, album: str) -> ProviderResult | None:
+        """Return cover bytes for the album, or None if not found."""
+
+    def _http_get(
+        self,
+        url: str,
+        *,
+        timeout: int = 15,
+        retries: int = 2,
+        backoff: float = 1.0,
+    ) -> bytes | None:
+        """HTTP GET with retry on transient failures (5xx, timeout)."""
+        last_err: Exception | None = None
+        for attempt in range(retries + 1):
+            req = urllib.request.Request(url, headers={"User-Agent": self.user_agent})
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    return r.read()
+            except urllib.error.HTTPError as e:
+                if e.code in (429, 500, 502, 503, 504) and attempt < retries:
+                    log.debug("%s transient %s, retry %d/%d", url, e.code, attempt + 1, retries)
+                    time.sleep(backoff * (2**attempt))
+                    last_err = e
+                    continue
+                log.debug("%s HTTP %s", url, e.code)
+                return None
+            except (urllib.error.URLError, TimeoutError) as e:
+                if attempt < retries:
+                    time.sleep(backoff * (2**attempt))
+                    last_err = e
+                    continue
+                log.debug("%s network error: %s", url, e)
+                return None
+        if last_err:
+            log.debug("%s exhausted retries: %s", url, last_err)
+        return None

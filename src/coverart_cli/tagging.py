@@ -1,0 +1,189 @@
+"""Reading album metadata from audio tags and embedding cover art back."""
+from __future__ import annotations
+
+import base64
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+
+from mutagen import File as MutagenFile
+from mutagen.flac import FLAC, Picture
+from mutagen.id3 import APIC, ID3, ID3NoHeaderError
+from mutagen.mp4 import MP4, MP4Cover
+from mutagen.oggopus import OggOpus
+from mutagen.oggvorbis import OggVorbis
+
+log = logging.getLogger(__name__)
+
+MP3_EXTS: frozenset[str] = frozenset({".mp3"})
+MP4_EXTS: frozenset[str] = frozenset({".m4a", ".m4b", ".mp4"})
+FLAC_EXTS: frozenset[str] = frozenset({".flac"})
+OGG_EXTS: frozenset[str] = frozenset({".ogg", ".oga"})
+OPUS_EXTS: frozenset[str] = frozenset({".opus"})
+AUDIO_EXTS: frozenset[str] = (
+    MP3_EXTS | MP4_EXTS | FLAC_EXTS | OGG_EXTS | OPUS_EXTS
+)
+SIDECAR_NAMES: tuple[str, ...] = ("cover.jpg", "cover.png", "folder.jpg", "folder.png")
+MIN_COVER_BYTES = 2000
+
+
+@dataclass(frozen=True)
+class AlbumMeta:
+    """Album metadata read from an audio file's tags."""
+
+    artist: str
+    album: str
+
+    def __str__(self) -> str:
+        return f"{self.artist} / {self.album}"
+
+
+def read_album_meta(path: Path) -> AlbumMeta | None:
+    """Read albumartist + album from any supported audio file. None if tags missing."""
+    try:
+        f = MutagenFile(path, easy=True)
+    except Exception as e:
+        log.debug("mutagen failed on %s: %s", path, e)
+        return None
+    if not f:
+        return None
+    artist_list = f.get("albumartist") or f.get("artist") or []
+    album_list = f.get("album") or []
+    if not artist_list or not album_list:
+        return None
+    artist = artist_list[0].strip()
+    album = album_list[0].strip()
+    if not artist or not album:
+        return None
+    return AlbumMeta(artist=artist, album=album)
+
+
+def find_sidecar(album_dir: Path) -> Path | None:
+    """Return existing cover.jpg/folder.jpg in album_dir if it looks valid."""
+    for name in SIDECAR_NAMES:
+        p = album_dir / name
+        if p.exists() and p.stat().st_size > MIN_COVER_BYTES:
+            return p
+    return None
+
+
+def detect_image_mime(data: bytes) -> str:
+    """Detect image MIME via magic bytes. Returns image/jpeg as fallback."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
+
+
+def has_embedded_cover(path: Path) -> bool:
+    """Check whether an audio file already has embedded cover art."""
+    suffix = path.suffix.lower()
+    try:
+        if suffix in MP3_EXTS:
+            try:
+                tags = ID3(path)
+            except ID3NoHeaderError:
+                return False
+            return any(k.startswith("APIC") for k in tags)
+        if suffix in MP4_EXTS:
+            audio = MP4(path)
+            return "covr" in audio.tags and bool(audio.tags["covr"])
+        if suffix in FLAC_EXTS:
+            return bool(FLAC(path).pictures)
+        if suffix in OGG_EXTS:
+            return bool(OggVorbis(path).get("metadata_block_picture"))
+        if suffix in OPUS_EXTS:
+            return bool(OggOpus(path).get("metadata_block_picture"))
+    except Exception as e:
+        log.debug("cover-check failed on %s: %s", path, e)
+    return False
+
+
+def embed_cover(path: Path, cover_bytes: bytes, mime: str | None = None) -> bool:
+    """Embed cover art into a single audio file. Skips if cover already present.
+
+    Returns True on success (or skip-already-has), False on failure.
+    """
+    mime = mime or detect_image_mime(cover_bytes)
+    suffix = path.suffix.lower()
+    try:
+        if suffix in MP3_EXTS:
+            return _embed_mp3(path, cover_bytes, mime)
+        if suffix in MP4_EXTS:
+            fmt = MP4Cover.FORMAT_PNG if mime == "image/png" else MP4Cover.FORMAT_JPEG
+            return _embed_m4a(path, cover_bytes, fmt)
+        if suffix in FLAC_EXTS:
+            return _embed_flac(path, cover_bytes, mime)
+        if suffix in OGG_EXTS:
+            return _embed_ogg(path, cover_bytes, mime, OggVorbis)
+        if suffix in OPUS_EXTS:
+            return _embed_ogg(path, cover_bytes, mime, OggOpus)
+    except Exception as e:
+        log.error("embed failed on %s: %s", path, e)
+        return False
+    log.warning("unsupported audio format: %s", path)
+    return False
+
+
+def _embed_mp3(path: Path, cover: bytes, mime: str) -> bool:
+    try:
+        tags = ID3(path)
+    except ID3NoHeaderError:
+        tags = ID3()
+    if any(k.startswith("APIC") for k in tags):
+        return True
+    tags.add(APIC(encoding=3, mime=mime, type=3, desc="Cover", data=cover))
+    tags.save(path, v2_version=3)
+    return True
+
+
+def _embed_m4a(path: Path, cover: bytes, fmt: int) -> bool:
+    audio = MP4(path)
+    if "covr" in audio.tags and audio.tags["covr"]:
+        return True
+    audio.tags["covr"] = [MP4Cover(cover, imageformat=fmt)]
+    audio.save()
+    return True
+
+
+def _make_picture(cover: bytes, mime: str) -> Picture:
+    pic = Picture()
+    pic.type = 3  # front cover
+    pic.mime = mime
+    pic.desc = "Cover"
+    pic.data = cover
+    return pic
+
+
+def _embed_flac(path: Path, cover: bytes, mime: str) -> bool:
+    audio = FLAC(path)
+    if audio.pictures:
+        return True
+    audio.add_picture(_make_picture(cover, mime))
+    audio.save()
+    return True
+
+
+def _embed_ogg(path: Path, cover: bytes, mime: str, cls) -> bool:
+    """Embed for Ogg-container formats (Vorbis, Opus) using metadata_block_picture."""
+    audio = cls(path)
+    if audio.get("metadata_block_picture"):
+        return True
+    pic = _make_picture(cover, mime)
+    audio["metadata_block_picture"] = [base64.b64encode(pic.write()).decode("ascii")]
+    audio.save()
+    return True
+
+
+def write_sidecar(album_dir: Path, cover_bytes: bytes, *, prefer_png: bool = False) -> Path:
+    """Write a cover.jpg or cover.png sidecar file. Returns the path written."""
+    mime = detect_image_mime(cover_bytes)
+    ext = ".png" if mime == "image/png" or prefer_png else ".jpg"
+    dest = album_dir / f"cover{ext}"
+    dest.write_bytes(cover_bytes)
+    return dest

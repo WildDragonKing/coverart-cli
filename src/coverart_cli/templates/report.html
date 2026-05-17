@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Library Report — coverart-cli</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Geist:wght@300..900&family=JetBrains+Mono:wght@400..700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root[data-theme="dark"] {
+        --bg: #0e0c08; --surface: #16120c; --surface-2: #1f1812;
+        --text: #f3ece0; --text-dim: #c7bda9; --muted: #8a8275;
+        --accent: #ec6a2e; --accent-soft: rgba(236, 106, 46, 0.18);
+        --gold: #c9a45a; --success: #8ab87a; --danger: #c66360;
+        --border: #2a241d; --noise-opacity: 0.06;
+      }
+      :root[data-theme="light"] {
+        --bg: #f6f0e3; --surface: #ece4d3; --surface-2: #e1d6c0;
+        --text: #1a1611; --text-dim: #4a4337; --muted: #6e655a;
+        --accent: #c1531f; --accent-soft: rgba(193, 83, 31, 0.14);
+        --gold: #886120; --success: #4a7140; --danger: #9a3833;
+        --border: #d4c8af; --noise-opacity: 0.04;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body {
+        font-family: "Geist", -apple-system, system-ui, sans-serif;
+        font-size: 15px; line-height: 1.55;
+        background: var(--bg); color: var(--text);
+        min-height: 100vh;
+        font-feature-settings: "ss01", "ss03", "cv11";
+        -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+        position: relative;
+        transition: background 0.4s ease, color 0.4s ease;
+      }
+      body::before {
+        content: ""; position: fixed; inset: 0;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>");
+        opacity: var(--noise-opacity); pointer-events: none; z-index: 1; mix-blend-mode: overlay;
+      }
+      ::selection { background: var(--accent); color: #fff; }
+      .container {
+        max-width: 1400px; margin: 0 auto;
+        padding: 48px clamp(20px, 4vw, 64px) 96px;
+        position: relative; z-index: 2;
+      }
+      .top-bar {
+        display: flex; justify-content: space-between; align-items: baseline;
+        gap: 24px; padding-bottom: 32px;
+        border-bottom: 1px solid var(--border); margin-bottom: 56px;
+      }
+      .top-bar .brand {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px; font-weight: 500;
+        text-transform: uppercase; letter-spacing: 0.16em;
+        color: var(--muted); display: flex; align-items: center; gap: 10px;
+      }
+      .top-bar .brand::before {
+        content: ""; display: inline-block;
+        width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+        animation: pulse 2.4s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.55; transform: scale(1.4); }
+      }
+      .theme-toggle {
+        background: transparent; border: 1px solid var(--border);
+        color: var(--text-dim); padding: 8px 14px; border-radius: 999px;
+        font-family: "JetBrains Mono", monospace; font-size: 11px;
+        letter-spacing: 0.12em; text-transform: uppercase;
+        cursor: pointer; transition: all 0.25s ease;
+      }
+      .theme-toggle:hover { color: var(--text); border-color: var(--accent); }
+      h1.headline {
+        font-family: "Fraunces", serif;
+        font-variation-settings: "opsz" 144, "SOFT" 50;
+        font-weight: 350; font-size: clamp(56px, 10vw, 140px);
+        line-height: 0.92; letter-spacing: -0.04em;
+        color: var(--text); margin-bottom: 24px;
+      }
+      h1.headline em {
+        font-style: italic; color: var(--accent);
+        font-variation-settings: "opsz" 144, "SOFT" 100;
+      }
+      .subtitle {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.18em;
+        margin-bottom: 80px; display: flex; gap: 28px; flex-wrap: wrap;
+      }
+      .subtitle span strong { color: var(--text-dim); font-weight: 500; }
+      .stats {
+        display: grid; grid-template-columns: 1.4fr 1fr 1fr;
+        gap: 32px; margin-bottom: 88px; align-items: stretch;
+      }
+      @media (max-width: 880px) { .stats { grid-template-columns: 1fr; } }
+      .stat-card {
+        background: var(--surface); border: 1px solid var(--border);
+        padding: 36px 32px 32px; position: relative; overflow: hidden;
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .stat-card:hover { transform: translateY(-3px); }
+      .stat-card .label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 18px;
+      }
+      .stat-card.hero { background: linear-gradient(135deg, var(--surface), var(--surface-2)); }
+      .stat-card.hero .value {
+        font-family: "Fraunces", serif; font-variation-settings: "opsz" 144;
+        font-weight: 300; font-size: clamp(72px, 9vw, 128px);
+        line-height: 0.9; letter-spacing: -0.04em;
+        color: var(--accent); display: flex; align-items: baseline; gap: 6px;
+      }
+      .stat-card.hero .value .pct { font-size: 0.4em; color: var(--text-dim); font-weight: 400; }
+      .stat-card .value {
+        font-family: "Fraunces", serif; font-variation-settings: "opsz" 96;
+        font-weight: 350; font-size: clamp(48px, 5vw, 72px);
+        line-height: 1; letter-spacing: -0.02em; color: var(--text);
+      }
+      .stat-card .breakdown { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+      .stat-card .breakdown .row {
+        display: flex; justify-content: space-between; align-items: baseline;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px; color: var(--text-dim);
+      }
+      .stat-card .breakdown .row .num { color: var(--text); font-weight: 600; }
+      .progress-track {
+        height: 4px; background: var(--surface-2);
+        margin-top: 24px; overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%; background: var(--accent);
+        transform-origin: left;
+        animation: grow 1.2s cubic-bezier(0.65, 0, 0.35, 1) 0.4s both;
+      }
+      @keyframes grow { from { transform: scaleX(0); } }
+      .filters {
+        display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+        margin-bottom: 40px; padding: 16px 0;
+        border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      }
+      .search-input {
+        flex: 1; min-width: 240px;
+        background: transparent; border: none; outline: none;
+        color: var(--text); font-family: "Geist", sans-serif;
+        font-size: 15px; padding: 10px 4px;
+        border-bottom: 1px solid transparent; transition: border-color 0.25s ease;
+      }
+      .search-input::placeholder { color: var(--muted); }
+      .search-input:focus { border-bottom-color: var(--accent); }
+      .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+      .chip {
+        background: transparent; border: 1px solid var(--border);
+        color: var(--text-dim); padding: 6px 14px; border-radius: 999px;
+        font-family: "JetBrains Mono", monospace; font-size: 11px;
+        letter-spacing: 0.1em; text-transform: uppercase;
+        cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
+      }
+      .chip:hover { color: var(--text); border-color: var(--text-dim); }
+      .chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+      .chip .count { margin-left: 6px; opacity: 0.6; }
+      .grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 32px 24px;
+      }
+      .album {
+        display: flex; flex-direction: column; gap: 12px;
+        opacity: 0; animation: fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .album .art {
+        position: relative; aspect-ratio: 1;
+        background: var(--surface); overflow: hidden; border: 1px solid var(--border);
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+      }
+      .album:hover .art {
+        transform: translateY(-4px) scale(1.012);
+        box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.4);
+      }
+      .album .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .album .art .placeholder {
+        width: 100%; height: 100%; display: flex;
+        align-items: center; justify-content: center; position: relative;
+      }
+      .album .art .placeholder svg { width: 60%; height: 60%; opacity: 0.35; }
+      .album.no-cover .art {
+        background: repeating-linear-gradient(135deg,
+          var(--surface), var(--surface) 8px,
+          var(--surface-2) 8px, var(--surface-2) 16px);
+      }
+      .album .badge {
+        position: absolute; top: 10px; right: 10px;
+        background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(6px);
+        color: #fff; padding: 4px 10px;
+        font-family: "JetBrains Mono", monospace; font-size: 10px;
+        letter-spacing: 0.1em; text-transform: uppercase; border-radius: 4px;
+      }
+      .album .badge.missing { background: var(--danger); }
+      .album .badge.lastfm { background: var(--accent); }
+      .album .badge.itunes { background: #d8c5a0; color: #1a1611; }
+      .album .badge.deezer { background: #a288c7; color: #1a1611; }
+      .album .badge.musicbrainz { background: var(--gold); color: #1a1611; }
+      .album .badge.manual { background: var(--success); color: #1a1611; }
+      .album .artist {
+        font-family: "JetBrains Mono", monospace; font-size: 11px;
+        color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .album .title {
+        font-family: "Fraunces", serif; font-variation-settings: "opsz" 48;
+        font-weight: 400; font-size: 19px; line-height: 1.2;
+        letter-spacing: -0.01em; color: var(--text);
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      }
+      .album .meta {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px; color: var(--muted); margin-top: 2px;
+      }
+      .empty-state {
+        grid-column: 1 / -1; text-align: center;
+        padding: 80px 20px; color: var(--muted);
+        font-family: "Fraunces", serif; font-style: italic; font-size: 22px;
+      }
+      footer {
+        margin-top: 96px; padding-top: 32px; border-top: 1px solid var(--border);
+        display: flex; justify-content: space-between;
+        font-family: "JetBrains Mono", monospace; font-size: 11px;
+        letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+      }
+      footer a {
+        color: var(--text-dim); text-decoration: none;
+        border-bottom: 1px solid transparent; transition: border-color 0.2s;
+      }
+      footer a:hover { border-bottom-color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="top-bar">
+        <div class="brand">coverart-cli / report</div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <span class="theme-label">Light</span>
+        </button>
+      </div>
+
+      <h1 class="headline">Library <em>Report</em></h1>
+      <div class="subtitle">
+        <span><strong id="meta-path">—</strong></span>
+        <span>Generated <strong id="meta-date">—</strong></span>
+        <span>coverart-cli <strong id="meta-version">—</strong></span>
+      </div>
+
+      <section class="stats">
+        <div class="stat-card hero">
+          <div class="label">Cover Coverage</div>
+          <div class="value">
+            <span id="stat-coverage">—</span><span class="pct">%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Albums Scanned</div>
+          <div class="value" id="stat-total">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">By Source</div>
+          <div class="breakdown" id="breakdown">—</div>
+        </div>
+      </section>
+
+      <section class="filters">
+        <input type="search" class="search-input" id="search"
+               placeholder="Search artist or album..." aria-label="Search" />
+        <div class="chips" id="chips">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="lastfm">Last.fm</button>
+          <button class="chip" data-filter="itunes">iTunes</button>
+          <button class="chip" data-filter="deezer">Deezer</button>
+          <button class="chip" data-filter="musicbrainz">MusicBrainz</button>
+          <button class="chip" data-filter="manual">Embedded</button>
+          <button class="chip" data-filter="none">Missing</button>
+        </div>
+      </section>
+
+      <main class="grid" id="grid"></main>
+
+      <footer>
+        <span>Generated by coverart-cli</span>
+        <a href="https://github.com/WildDragonKing/coverart-cli" target="_blank" rel="noopener noreferrer">github.com/WildDragonKing/coverart-cli ↗</a>
+      </footer>
+    </div>
+
+    <script type="application/json" id="report-data">
+__REPORT_DATA__
+    </script>
+    <script>
+      (function () {
+        const dataEl = document.getElementById("report-data");
+        const data = JSON.parse(dataEl.textContent);
+
+        document.getElementById("meta-path").textContent = data.library_path || "—";
+        document.getElementById("meta-date").textContent = new Date(data.generated_at).toLocaleString(undefined, {
+          year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+        });
+        document.getElementById("meta-version").textContent = data.tool_version || "—";
+
+        const total = data.albums.length;
+        const covered = data.albums.filter((a) => a.has_cover).length;
+        const pct = total ? Math.round((covered / total) * 100) : 0;
+        document.getElementById("stat-coverage").textContent = pct;
+        document.getElementById("stat-total").textContent = total;
+        setTimeout(() => { document.getElementById("progress-fill").style.width = pct + "%"; }, 50);
+
+        const bySource = data.albums.reduce((m, a) => {
+          const k = a.source || "none";
+          m[k] = (m[k] || 0) + 1;
+          return m;
+        }, {});
+        const sourceOrder = ["lastfm", "itunes", "deezer", "musicbrainz", "manual", "none"];
+        const sourceLabels = { lastfm: "Last.fm", itunes: "iTunes", deezer: "Deezer", musicbrainz: "MusicBrainz", manual: "Embedded", none: "Missing" };
+        const breakdownEl = document.getElementById("breakdown");
+        const frag = document.createDocumentFragment();
+        sourceOrder.filter(k => bySource[k]).forEach(k => {
+          const row = document.createElement("div");
+          row.className = "row";
+          const lbl = document.createElement("span"); lbl.textContent = sourceLabels[k];
+          const num = document.createElement("span"); num.className = "num"; num.textContent = bySource[k];
+          row.appendChild(lbl); row.appendChild(num); frag.appendChild(row);
+        });
+        breakdownEl.replaceChildren(frag);
+
+        document.querySelectorAll(".chip").forEach((c) => {
+          const filter = c.dataset.filter;
+          const count = filter === "all" ? total : (bySource[filter] || 0);
+          const span = document.createElement("span"); span.className = "count"; span.textContent = count;
+          c.appendChild(document.createTextNode(" "));
+          c.appendChild(span);
+        });
+
+        const grid = document.getElementById("grid");
+        let activeFilter = "all";
+        let activeQuery = "";
+
+        const vinylSvgString = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none"><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="0.8"/><circle cx="50" cy="50" r="36" stroke="currentColor" stroke-width="0.5"/><circle cx="50" cy="50" r="26" stroke="currentColor" stroke-width="0.5"/><circle cx="50" cy="50" r="16" stroke="currentColor" stroke-width="0.5"/><circle cx="50" cy="50" r="6" fill="currentColor"/></svg>';
+
+        function buildCard(a, i) {
+          const src = a.source || "none";
+          const hasCover = a.has_cover && a.cover_data_uri;
+
+          const card = document.createElement("div");
+          card.className = "album" + (a.has_cover ? "" : " no-cover");
+          card.style.animationDelay = Math.min(i * 18, 600) + "ms";
+
+          const art = document.createElement("div"); art.className = "art";
+          if (hasCover) {
+            const img = document.createElement("img");
+            img.src = a.cover_data_uri;
+            img.alt = a.artist + " — " + a.album;
+            img.loading = "lazy";
+            art.appendChild(img);
+          } else {
+            const ph = document.createElement("div"); ph.className = "placeholder";
+            const parser = new DOMParser();
+            const svg = parser.parseFromString(vinylSvgString, "image/svg+xml").documentElement;
+            ph.appendChild(svg);
+            art.appendChild(ph);
+          }
+          const badge = document.createElement("span");
+          badge.className = "badge " + src;
+          badge.textContent = sourceLabels[src] || src;
+          art.appendChild(badge);
+
+          const artistEl = document.createElement("div"); artistEl.className = "artist"; artistEl.textContent = a.artist;
+          const titleEl = document.createElement("div"); titleEl.className = "title"; titleEl.textContent = a.album;
+          const metaEl = document.createElement("div"); metaEl.className = "meta";
+          metaEl.textContent = a.file_count + " track" + (a.file_count === 1 ? "" : "s");
+
+          card.appendChild(art); card.appendChild(artistEl);
+          card.appendChild(titleEl); card.appendChild(metaEl);
+          return card;
+        }
+
+        function renderCards() {
+          const filtered = data.albums.filter((a) => {
+            const src = a.source || "none";
+            if (activeFilter !== "all" && src !== activeFilter) return false;
+            if (activeQuery) {
+              const q = activeQuery.toLowerCase();
+              return a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q);
+            }
+            return true;
+          });
+
+          grid.replaceChildren();
+          if (!filtered.length) {
+            const empty = document.createElement("div");
+            empty.className = "empty-state";
+            empty.textContent = "Nothing matches that filter.";
+            grid.appendChild(empty);
+            return;
+          }
+          const frag = document.createDocumentFragment();
+          filtered.forEach((a, i) => frag.appendChild(buildCard(a, i)));
+          grid.appendChild(frag);
+        }
+
+        document.getElementById("search").addEventListener("input", (e) => {
+          activeQuery = e.target.value.trim();
+          renderCards();
+        });
+        document.querySelectorAll(".chip").forEach((c) => {
+          c.addEventListener("click", () => {
+            document.querySelectorAll(".chip").forEach((x) => x.classList.remove("active"));
+            c.classList.add("active");
+            activeFilter = c.dataset.filter;
+            renderCards();
+          });
+        });
+        renderCards();
+
+        const root = document.documentElement;
+        const toggle = document.getElementById("theme-toggle");
+        const label = toggle.querySelector(".theme-label");
+        function setTheme(t) {
+          root.setAttribute("data-theme", t);
+          label.textContent = t === "dark" ? "Light" : "Dark";
+          try { localStorage.setItem("coverart-theme", t); } catch (_) {}
+        }
+        try {
+          const saved = localStorage.getItem("coverart-theme");
+          if (saved) setTheme(saved);
+        } catch (_) {}
+        toggle.addEventListener("click", () => {
+          setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+        });
+      })();
+    </script>
+  </body>
+</html>
