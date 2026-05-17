@@ -93,6 +93,9 @@ def test_safe_url_for_log_keeps_path() -> None:
 def test_safe_url_for_log_handles_garbage() -> None:
     from coverart_cli.providers.base import _safe_url_for_log
 
-    # Anything urlsplit can parse should round-trip safely; nothing should crash.
-    assert "<invalid-url>" not in _safe_url_for_log("https://example.com")
+    # Empty / non-URL strings must not crash.
     assert _safe_url_for_log("") == ""
+    assert _safe_url_for_log("not a url at all") == "not a url at all"
+    # urlsplit accepts almost anything; the function must never raise.
+    _safe_url_for_log("https:///bad-host?token=x")
+    _safe_url_for_log("http://user:pass@example.com/path?token=abc")
