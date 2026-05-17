@@ -2,11 +2,25 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+
+# Strip secret-bearing query parameters from URLs before logging them.
+# Last.fm includes ?api_key=…; iTunes, Deezer, MusicBrainz currently do not
+# carry credentials in URLs, but we redact defensively.
+_SECRET_QUERY_RE = re.compile(
+    r"([?&](?:api[_-]?key|token|secret|password|key)=)[^&]+",
+    re.IGNORECASE,
+)
+
+
+def _redact(url: str) -> str:
+    """Replace the value of any secret-looking query parameter with ***."""
+    return _SECRET_QUERY_RE.sub(r"\1***", url)
 
 log = logging.getLogger(__name__)
 
@@ -55,19 +69,22 @@ class CoverProvider(ABC):
                     return r.read()
             except urllib.error.HTTPError as e:
                 if e.code in (429, 500, 502, 503, 504) and attempt < retries:
-                    log.debug("%s transient %s, retry %d/%d", url, e.code, attempt + 1, retries)
+                    log.debug(
+                        "%s transient %s, retry %d/%d",
+                        _redact(url), e.code, attempt + 1, retries,
+                    )
                     time.sleep(backoff * (2**attempt))
                     last_err = e
                     continue
-                log.debug("%s HTTP %s", url, e.code)
+                log.debug("%s HTTP %s", _redact(url), e.code)
                 return None
             except (urllib.error.URLError, TimeoutError) as e:
                 if attempt < retries:
                     time.sleep(backoff * (2**attempt))
                     last_err = e
                     continue
-                log.debug("%s network error: %s", url, e)
+                log.debug("%s network error: %s", _redact(url), e)
                 return None
         if last_err:
-            log.debug("%s exhausted retries: %s", url, last_err)
+            log.debug("%s exhausted retries: %s", _redact(url), last_err)
         return None

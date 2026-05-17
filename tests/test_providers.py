@@ -60,3 +60,28 @@ def test_deezer_escape_strips_quotes() -> None:
     from coverart_cli.providers import DeezerProvider
 
     assert DeezerProvider._escape('"Foo" bar') == "Foo  bar"
+
+
+def test_redact_strips_api_key() -> None:
+    from coverart_cli.providers.base import _redact
+
+    url = "https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=SECRET123&artist=X"
+    assert "SECRET123" not in _redact(url)
+    assert "api_key=***" in _redact(url)
+
+
+def test_redact_keeps_safe_urls_untouched() -> None:
+    from coverart_cli.providers.base import _redact
+
+    url = "https://itunes.apple.com/search?term=Pink%20Floyd&entity=album"
+    assert _redact(url) == url
+
+
+def test_redact_handles_multiple_secret_params() -> None:
+    from coverart_cli.providers.base import _redact
+
+    url = "https://example.com/?api_key=AAA&token=BBB&user=joe"
+    redacted = _redact(url)
+    assert "AAA" not in redacted
+    assert "BBB" not in redacted
+    assert "user=joe" in redacted
