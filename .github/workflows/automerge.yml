@@ -1,18 +1,18 @@
-# Auto-enable squash auto-merge on every non-draft PR.
-# Branch protection still gates the merge — it only fires once all required
-# checks (test matrix, CodeQL, smoke, CodeRabbit) pass.
-name: Enable auto-merge
+# Single auto-merge workflow for ALL PRs (human + Dependabot).
+# Branch protection (6 required checks: test x3, Analyze, smoke, CodeRabbit)
+# is still the gate — auto-merge only fires once everything is green.
+name: Auto-merge
 
 on:
   pull_request_target:
-    types: [opened, reopened, ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  enable:
+  automerge:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
