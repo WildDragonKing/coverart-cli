@@ -3,7 +3,7 @@
 > Fill the missing covers in your music library — embed and sidecar in one pass.
 
 <p align="center">
-  <img src="docs/screenshots/report-dark.png" alt="HTML coverage report" width="100%" />
+  <img src="https://raw.githubusercontent.com/WildDragonKing/coverart-cli/main/docs/screenshots/report-dark.png" alt="HTML coverage report" width="100%" />
 </p>
 
 [![CI](https://github.com/WildDragonKing/coverart-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/WildDragonKing/coverart-cli/actions/workflows/ci.yml)
