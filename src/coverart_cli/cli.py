@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from coverart_cli import __version__
+from coverart_cli.config import load_config
 from coverart_cli.core import RunOptions, RunStats, run
 from coverart_cli.providers import (
     DeezerProvider,
@@ -38,8 +39,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("root", type=Path, help="root directory of your music library")
     p.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="explicit config file (default lookup: ~/.config/coverart-cli/config.toml, "
+             "then ./coverart.toml)",
+    )
+    p.add_argument(
         "--lastfm-key",
-        default=os.environ.get("LASTFM_API_KEY"),
+        default=None,
         help="Last.fm API key (or set $LASTFM_API_KEY). Get one at https://www.last.fm/api/account/create",
     )
     p.add_argument(
@@ -138,8 +147,24 @@ def configure_logging(verbosity: int) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     configure_logging(args.verbose)
+
+    # Merge config file values into args where the user did not pass a flag.
+    # CLI-supplied (non-default) values always win.
+    cfg = load_config(args.config)
+    for key, value in cfg.items():
+        if not hasattr(args, key):
+            continue
+        current = getattr(args, key)
+        default = parser.get_default(key)
+        if current == default or current is None:
+            setattr(args, key, value)
+
+    # Environment variable takes precedence over config but is overridden by --lastfm-key.
+    if args.lastfm_key is None:
+        args.lastfm_key = os.environ.get("LASTFM_API_KEY") or cfg.get("lastfm_key")
 
     if args.report_only:
         return _do_report_only(args)

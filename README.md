@@ -41,6 +41,22 @@ coverart ~/Music --dry-run -v
 
 Run `coverart --help` for the full flag list.
 
+## Config file
+
+Save your defaults so you don't have to repeat flags:
+
+```toml
+# ~/.config/coverart-cli/config.toml
+lastfm_key      = "your-key"
+min_bytes       = 30000
+replace_smaller = true
+no_musicbrainz  = false
+```
+
+Lookup order (later wins): built-in → `~/.config/coverart-cli/config.toml` →
+`./coverart.toml` → `--config PATH` → CLI flags → environment variables. Run
+`coverart ~/Music` afterwards with no flags.
+
 ## Sources
 
 Tried in order until a cover is found:
@@ -71,12 +87,12 @@ print(stats.fetched_from, stats.not_found)
 
 ## Alternatives
 
-| Tool | When to pick it |
-|------|-----------------|
-| [sacad](https://github.com/desbma/sacad) | Best match rate; Rust binary, more sources |
-| [get-cover-art](https://github.com/regosen/get_cover_art) | Battle-tested Python API |
-| [beets](https://beets.io/) `fetchart` | Already using beets for everything else |
-| `coverart-cli` (this) | You want the HTML report + embed/sidecar dual-output in ~700 LOC |
+| Tool                                                      | When to pick it                                                  |
+| --------------------------------------------------------- | ---------------------------------------------------------------- |
+| [sacad](https://github.com/desbma/sacad)                  | Best match rate; Rust binary, more sources                       |
+| [get-cover-art](https://github.com/regosen/get_cover_art) | Battle-tested Python API                                         |
+| [beets](https://beets.io/) `fetchart`                     | Already using beets for everything else                          |
+| `coverart-cli` (this)                                     | You want the HTML report + embed/sidecar dual-output in ~700 LOC |
 
 ## Development
 

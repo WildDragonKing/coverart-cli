@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-17
+
+### Added
+
+- **TOML config file** support — `~/.config/coverart-cli/config.toml`,
+  `./coverart.toml`, or `--config PATH`. CLI flags still override the config.
+- **`py.typed`** marker file for PEP 561 — type checkers can now see our types.
+- **`.editorconfig`** for cross-IDE consistency.
+- **`.pre-commit-config.yaml`** with ruff + ruff-format + standard checks.
+- **`SECURITY.md`** with private vulnerability reporting link.
+- **PyPI release workflow** (`.github/workflows/release.yml`) — push a
+  `v*` tag and the package is built and uploaded via PyPI Trusted Publishing.
+- **Dependabot** monthly checks for GitHub Actions and pip.
+
+### Changed
+
+- Minimum Python is now **3.11** (was 3.10) — needed for stdlib `tomllib`.
+
 ## [0.2.0] - 2026-05-17
 
 ### Added

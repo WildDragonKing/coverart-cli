@@ -5,7 +5,7 @@ import base64
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib import resources
 from pathlib import Path
 
@@ -141,7 +141,7 @@ def build_report(
     """Render the HTML report from a list of album entries."""
     payload = {
         "library_path": library_path,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "tool_version": __version__,
         "albums": [e.to_dict() for e in entries],
     }
