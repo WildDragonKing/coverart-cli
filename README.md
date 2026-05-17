@@ -3,14 +3,14 @@
 > Fill the missing covers in your music library — embed and sidecar in one pass.
 
 <p align="center">
-  <img src="docs/screenshots/report-dark.png" alt="HTML coverage report" width="100%" />
+  <img src="https://raw.githubusercontent.com/WildDragonKing/coverart-cli/main/docs/screenshots/report-dark.png" alt="HTML coverage report" width="100%" />
 </p>
 
 [![CI](https://github.com/WildDragonKing/coverart-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/WildDragonKing/coverart-cli/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/WildDragonKing/coverart-cli/actions/workflows/codeql.yml/badge.svg)](https://github.com/WildDragonKing/coverart-cli/actions/workflows/codeql.yml)
 [![CodeRabbit reviews](https://img.shields.io/coderabbit/prs/github/WildDragonKing/coverart-cli?labelColor=171717&color=FF570A&label=CodeRabbit+reviews)](https://coderabbit.ai)
 [![PyPI](https://img.shields.io/pypi/v/coverart-cli.svg?color=blue)](https://pypi.org/project/coverart-cli/)
-[![PyPI downloads](https://img.shields.io/pypi/dm/coverart-cli.svg?label=downloads)](https://pypi.org/project/coverart-cli/)
+[![PyPI downloads](https://static.pepy.tech/badge/coverart-cli/month)](https://pypi.org/project/coverart-cli/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
