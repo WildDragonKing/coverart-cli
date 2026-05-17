@@ -7,7 +7,10 @@
 </p>
 
 [![CI](https://github.com/WildDragonKing/coverart-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/WildDragonKing/coverart-cli/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org)
+[![CodeQL](https://github.com/WildDragonKing/coverart-cli/actions/workflows/codeql.yml/badge.svg)](https://github.com/WildDragonKing/coverart-cli/actions/workflows/codeql.yml)
+[![PyPI](https://img.shields.io/pypi/v/coverart-cli.svg?color=blue)](https://pypi.org/project/coverart-cli/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/coverart-cli.svg?label=downloads)](https://pypi.org/project/coverart-cli/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## What it does

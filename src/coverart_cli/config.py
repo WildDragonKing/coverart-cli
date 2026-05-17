@@ -44,6 +44,7 @@ ALLOWED_KEYS: frozenset[str] = frozenset({
     "no_fallback_dirnames",
     "min_bytes",
     "replace_smaller",
+    "workers",
     "dry_run",
     "missing_csv",
     "report_html",

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 import urllib.parse
 
@@ -28,6 +29,7 @@ class MusicBrainzProvider(CoverProvider):
         self.user_agent = ua
         self.search_limit = search_limit
         self._last_request = 0.0
+        self._rate_lock = threading.Lock()
 
     def fetch(self, artist: str, album: str) -> ProviderResult | None:
         self._respect_rate_limit()
@@ -68,7 +70,9 @@ class MusicBrainzProvider(CoverProvider):
         return s.strip()
 
     def _respect_rate_limit(self) -> None:
-        elapsed = time.time() - self._last_request
-        if elapsed < MB_MIN_DELAY:
-            time.sleep(MB_MIN_DELAY - elapsed)
-        self._last_request = time.time()
+        # Serialise across threads — MusicBrainz allows ≤1 request per second per IP.
+        with self._rate_lock:
+            elapsed = time.time() - self._last_request
+            if elapsed < MB_MIN_DELAY:
+                time.sleep(MB_MIN_DELAY - elapsed)
+            self._last_request = time.time()
