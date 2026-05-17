@@ -1,0 +1,38 @@
+# CodeRabbit configuration for coverart-cli
+# Docs: https://docs.coderabbit.ai/getting-started/configure-coderabbit
+
+language: en-US
+early_access: false
+
+reviews:
+  profile: chill           # less nitpicky; chill | assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches: [main]
+  path_filters:
+    - "!docs/screenshots/**"      # don't review screenshots
+    - "!**/*.md"                  # docs don't need code review
+    - "!CHANGELOG.md"
+    - "!.release-please-manifest.json"
+  path_instructions:
+    - path: "src/coverart_cli/providers/**"
+      instructions: >
+        Providers must inherit CoverProvider and call _http_get with retries.
+        Reject placeholder images. Respect MIN_COVER_BYTES.
+    - path: "src/coverart_cli/templates/**"
+      instructions: >
+        HTML templates must use safe DOM construction
+        (createElement / textContent / replaceChildren),
+        never innerHTML with non-escaped JSON.
+    - path: "tests/**"
+      instructions: >
+        Tests should be deterministic — use the FakeProvider, no real network.
+
+chat:
+  auto_reply: true
