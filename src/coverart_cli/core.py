@@ -9,10 +9,11 @@ from pathlib import Path
 from coverart_cli.providers import CoverProvider, ProviderResult
 from coverart_cli.tagging import (
     AUDIO_EXTS,
+    MIN_COVER_BYTES,
     AlbumMeta,
     embed_cover,
+    existing_embedded_size,
     find_sidecar,
-    has_embedded_cover,
     read_album_meta,
     write_sidecar,
 )
@@ -46,6 +47,12 @@ class RunOptions:
     dry_run: bool = False
     fallback_to_dirnames: bool = True
     missing_csv: Path | None = None
+    # Upgrade thresholds — replace an existing cover if it's smaller than this.
+    # 0 (default) disables replacement: existing covers are always kept.
+    min_sidecar_bytes: int = 0
+    min_embedded_bytes: int = 0
+    # If the existing cover is bigger than the newly-fetched one, keep the old one.
+    keep_larger_existing: bool = True
 
 
 def find_album_dirs(root: Path) -> list[Path]:
@@ -85,9 +92,35 @@ def album_meta_for(album_dir: Path, *, fallback_to_dirnames: bool) -> AlbumMeta 
 def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
     """Fetch + apply cover art for one album directory."""
     stats.albums_total += 1
-    if opts.do_sidecar and find_sidecar(album_dir):
+
+    # Decide whether to bother fetching anything at all.
+    sidecar_threshold = max(opts.min_sidecar_bytes, MIN_COVER_BYTES)
+    existing_sidecar = (
+        find_sidecar(album_dir, min_bytes=sidecar_threshold) if opts.do_sidecar else None
+    )
+    audio_files = [
+        f for f in album_dir.iterdir()
+        if f.is_file() and f.suffix.lower() in AUDIO_EXTS
+    ]
+    existing_min_embed = (
+        min((existing_embedded_size(f) for f in audio_files[:3]), default=0)
+        if opts.do_embed
+        else None
+    )
+    embed_needs_upgrade = (
+        opts.do_embed
+        and existing_min_embed is not None
+        and existing_min_embed < opts.min_embedded_bytes
+    )
+
+    has_sidecar_ok = existing_sidecar is not None
+    needs_fetch = (opts.do_sidecar and not has_sidecar_ok) or (
+        opts.do_embed and (existing_min_embed == 0 or embed_needs_upgrade)
+    )
+
+    if not needs_fetch:
         stats.sidecar_already += 1
-        log.info("[skip-sidecar] %s", album_dir.name)
+        log.info("[skip]     %s (cover already meets quality bar)", album_dir.name)
         return
 
     meta = album_meta_for(album_dir, fallback_to_dirnames=opts.fallback_to_dirnames)
@@ -109,7 +142,23 @@ def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
         stats.not_found += 1
         return
 
-    log.info("[%s] %s", result.source, meta)
+    new_size = len(result.image_bytes)
+
+    # Apply "keep larger existing" rule.
+    if opts.keep_larger_existing:
+        existing_size_for_compare = max(
+            existing_sidecar.stat().st_size if existing_sidecar else 0,
+            existing_min_embed or 0,
+        )
+        if existing_size_for_compare > new_size:
+            log.info(
+                "[keep]     %s (existing %d B > new %d B)",
+                meta, existing_size_for_compare, new_size,
+            )
+            stats.sidecar_already += 1
+            return
+
+    log.info("[%s] %s (%d B)", result.source, meta, new_size)
     stats.record_fetch(result.source)
 
     if opts.dry_run:
@@ -123,19 +172,63 @@ def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
             stats.errors += 1
 
     if opts.do_embed:
-        audio_files = [
-            f for f in album_dir.iterdir()
-            if f.is_file() and f.suffix.lower() in AUDIO_EXTS
-        ]
         for f in audio_files:
-            if has_embedded_cover(f):
+            cur = existing_embedded_size(f)
+            replace_existing = cur > 0 and cur < opts.min_embedded_bytes
+            if cur > 0 and not replace_existing:
                 stats.files_already_embedded += 1
                 continue
+            if replace_existing:
+                _clear_embedded_cover(f)
             ok = embed_cover(f, result.image_bytes)
             if ok:
                 stats.files_embedded += 1
             else:
                 stats.errors += 1
+
+
+def _clear_embedded_cover(path: Path) -> None:
+    """Strip embedded artwork so embed_cover can write a new one."""
+    from mutagen.flac import FLAC
+    from mutagen.id3 import ID3, ID3NoHeaderError
+    from mutagen.mp4 import MP4
+    from mutagen.oggopus import OggOpus
+    from mutagen.oggvorbis import OggVorbis
+
+    from coverart_cli.tagging import (
+        FLAC_EXTS,
+        MP3_EXTS,
+        MP4_EXTS,
+        OGG_EXTS,
+        OPUS_EXTS,
+    )
+
+    suffix = path.suffix.lower()
+    try:
+        if suffix in MP3_EXTS:
+            try:
+                tags = ID3(path)
+                tags.delall("APIC")
+                tags.save(path, v2_version=3)
+            except ID3NoHeaderError:
+                return
+        elif suffix in MP4_EXTS:
+            audio = MP4(path)
+            if "covr" in audio.tags:
+                del audio.tags["covr"]
+                audio.save()
+        elif suffix in FLAC_EXTS:
+            audio = FLAC(path)
+            audio.clear_pictures()
+            audio.save()
+        elif suffix in (OGG_EXTS | OPUS_EXTS):
+            cls = OggOpus if suffix in OPUS_EXTS else OggVorbis
+            audio = cls(path)
+            if "metadata_block_picture" in audio:
+                del audio["metadata_block_picture"]
+                audio.save()
+    except Exception as e:
+        log.debug("clear-cover failed on %s: %s", path, e)
 
 
 def run(opts: RunOptions) -> RunStats:

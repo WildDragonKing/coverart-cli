@@ -58,13 +58,54 @@ def read_album_meta(path: Path) -> AlbumMeta | None:
     return AlbumMeta(artist=artist, album=album)
 
 
-def find_sidecar(album_dir: Path) -> Path | None:
-    """Return existing cover.jpg/folder.jpg in album_dir if it looks valid."""
+def find_sidecar(album_dir: Path, *, min_bytes: int = MIN_COVER_BYTES) -> Path | None:
+    """Return existing sidecar in album_dir if it meets the byte threshold."""
     for name in SIDECAR_NAMES:
         p = album_dir / name
-        if p.exists() and p.stat().st_size > MIN_COVER_BYTES:
+        if p.exists() and p.stat().st_size > min_bytes:
             return p
     return None
+
+
+def existing_embedded_size(path: Path) -> int:
+    """Return the byte size of the largest embedded cover, or 0 if none."""
+    suffix = path.suffix.lower()
+    try:
+        if suffix in MP3_EXTS:
+            try:
+                tags = ID3(path)
+            except ID3NoHeaderError:
+                return 0
+            sizes = [len(t.data) for t in tags.values() if isinstance(t, APIC)]
+            return max(sizes) if sizes else 0
+        if suffix in MP4_EXTS:
+            audio = MP4(path)
+            covers = audio.tags.get("covr") if audio.tags else None
+            return max((len(bytes(c)) for c in covers), default=0) if covers else 0
+        if suffix in FLAC_EXTS:
+            pics = FLAC(path).pictures
+            return max((len(p.data) for p in pics), default=0) if pics else 0
+        if suffix in OGG_EXTS:
+            return _ogg_picture_size(OggVorbis(path))
+        if suffix in OPUS_EXTS:
+            return _ogg_picture_size(OggOpus(path))
+    except Exception as e:
+        log.debug("size-check failed on %s: %s", path, e)
+    return 0
+
+
+def _ogg_picture_size(audio) -> int:
+    """Decode metadata_block_picture (base64 Picture blocks) and return max payload size."""
+    blob_list = audio.get("metadata_block_picture") or []
+    best = 0
+    for blob in blob_list:
+        try:
+            raw = base64.b64decode(blob)
+            pic = Picture(raw)
+            best = max(best, len(pic.data))
+        except Exception:
+            continue
+    return best
 
 
 def detect_image_mime(data: bytes) -> str:

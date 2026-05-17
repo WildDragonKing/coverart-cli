@@ -83,6 +83,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="do not fall back to artist/album dir names if tags are missing",
     )
     p.add_argument(
+        "--min-bytes",
+        type=int,
+        default=0,
+        metavar="N",
+        help="upgrade existing covers smaller than this many bytes "
+             "(applies to both sidecar and embedded; 0 = never replace, the default)",
+    )
+    p.add_argument(
+        "--replace-smaller",
+        action="store_true",
+        help="when an existing cover is smaller than the newly fetched one, "
+             "replace it (default: keep larger existing)",
+    )
+    p.add_argument(
         "--dry-run",
         action="store_true",
         help="show what would happen, write nothing",
@@ -158,6 +172,9 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         fallback_to_dirnames=not args.no_fallback_dirnames,
         missing_csv=args.missing_csv,
+        min_sidecar_bytes=args.min_bytes,
+        min_embedded_bytes=args.min_bytes,
+        keep_larger_existing=not args.replace_smaller,
     )
 
     try:

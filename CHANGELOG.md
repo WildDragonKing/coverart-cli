@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **FLAC, Ogg Vorbis, and Opus** file format support (read + embed).
 - HTML report shows iTunes / Deezer / Embedded filter chips and badges.
 - Demo report generator (`docs/make_demo_report.py`).
+- **`--min-bytes N`**: upgrade existing covers smaller than N bytes. Default 0
+  (keep all existing). Setting e.g. `--min-bytes 50000` causes the tool to
+  re-fetch covers for any album whose current artwork is below 50 KB.
+- **`--replace-smaller`**: when the freshly fetched cover is larger than the
+  existing one, replace it. Default is to keep the larger existing cover when
+  both qualify.
+- `existing_embedded_size()` helper in `coverart_cli.tagging` for inspecting
+  in-tag artwork sizes across all five formats.
 
 ### Changed
 

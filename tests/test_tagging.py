@@ -45,3 +45,13 @@ def test_find_sidecar_too_small(tmp_path: Path) -> None:
 
 def test_find_sidecar_missing(tmp_path: Path) -> None:
     assert find_sidecar(tmp_path) is None
+
+
+def test_find_sidecar_respects_min_bytes(tmp_path: Path) -> None:
+    cover = tmp_path / "cover.jpg"
+    cover.write_bytes(b"x" * 10_000)
+    # default threshold: this one is fine
+    assert find_sidecar(tmp_path) == cover
+    # tightened threshold rejects it
+    assert find_sidecar(tmp_path, min_bytes=20_000) is None
+    assert find_sidecar(tmp_path, min_bytes=5_000) == cover
