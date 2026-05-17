@@ -106,6 +106,23 @@ pip install -e ".[dev]"
 pytest && ruff check .
 ```
 
+## Releases
+
+Releases are fully automated via [release-please](https://github.com/googleapis/release-please-action).
+Commits to `main` follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Commit prefix                   | Effect on next release     |
+| ------------------------------- | -------------------------- |
+| `feat: …`                       | minor bump (0.3.0 → 0.4.0) |
+| `fix: …`                        | patch bump (0.3.0 → 0.3.1) |
+| `feat!: …` / `BREAKING CHANGE:` | major bump (0.3.0 → 1.0.0) |
+| `docs:`, `refactor:`, `perf:`   | changelog entry, no bump   |
+| `chore:`, `ci:`, `test:`        | hidden in changelog        |
+
+release-please opens a single rolling "Release PR" that accumulates the
+pending version. Merging that PR creates the git tag, which triggers the
+PyPI publish workflow.
+
 ## License
 
 [MIT](LICENSE)
