@@ -94,6 +94,10 @@ def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
     stats.albums_total += 1
 
     # Decide whether to bother fetching anything at all.
+    # Logic:
+    #   - Sidecar mode on (default): a sidecar that meets min_sidecar_bytes counts as done.
+    #   - Embed-only mode: we look at the embedded covers of the first few tracks.
+    # Setting --min-bytes > 0 raises the bar in both cases.
     sidecar_threshold = max(opts.min_sidecar_bytes, MIN_COVER_BYTES)
     existing_sidecar = (
         find_sidecar(album_dir, min_bytes=sidecar_threshold) if opts.do_sidecar else None
@@ -105,23 +109,22 @@ def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
     existing_min_embed = (
         min((existing_embedded_size(f) for f in audio_files[:3]), default=0)
         if opts.do_embed
-        else None
-    )
-    embed_needs_upgrade = (
-        opts.do_embed
-        and existing_min_embed is not None
-        and existing_min_embed < opts.min_embedded_bytes
+        else 0
     )
 
-    has_sidecar_ok = existing_sidecar is not None
-    needs_fetch = (opts.do_sidecar and not has_sidecar_ok) or (
-        opts.do_embed and (existing_min_embed == 0 or embed_needs_upgrade)
-    )
-
-    if not needs_fetch:
-        stats.sidecar_already += 1
-        log.info("[skip]     %s (cover already meets quality bar)", album_dir.name)
-        return
+    if opts.do_sidecar:
+        # Sidecar is the gatekeeper. If it exists and is big enough we're done.
+        # The upgrade flag --min-bytes raises the size threshold the existing one must meet.
+        if existing_sidecar is not None:
+            stats.sidecar_already += 1
+            log.info("[skip]     %s (sidecar already meets quality bar)", album_dir.name)
+            return
+    else:
+        # Embed-only mode: every audio file needs an embed of acceptable size.
+        if existing_min_embed > 0 and existing_min_embed >= opts.min_embedded_bytes:
+            stats.sidecar_already += 1
+            log.info("[skip]     %s (embeds already present)", album_dir.name)
+            return
 
     meta = album_meta_for(album_dir, fallback_to_dirnames=opts.fallback_to_dirnames)
     if not meta:
