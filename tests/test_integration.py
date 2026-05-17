@@ -192,3 +192,34 @@ def test_partial_output_modes(tmp_path: Path, flag: str) -> None:
             assert any(k.startswith("APIC") for k in tags)
     else:
         assert (album_dir / "cover.jpg").exists()
+
+
+def test_parallel_processing_correctness(tmp_path: Path) -> None:
+    """20 albums processed by 8 workers must give the same stats as serial."""
+    for i in range(20):
+        _make_album(tmp_path, f"Artist {i:02d}", f"Album {i:02d}", tracks=2)
+
+    provider_parallel = FakeProvider()
+    stats_p = run(
+        RunOptions(root=tmp_path, providers=[provider_parallel], workers=8)
+    )
+
+    # Wipe sidecars so the second run actually does work.
+    for sidecar in tmp_path.rglob("cover.jpg"):
+        sidecar.unlink()
+    # Strip embedded APIC frames.
+    for track in tmp_path.rglob("*.mp3"):
+        tags = ID3(track)
+        tags.delall("APIC")
+        tags.save(str(track), v2_version=3)
+
+    provider_serial = FakeProvider()
+    stats_s = run(
+        RunOptions(root=tmp_path, providers=[provider_serial], workers=1)
+    )
+
+    assert stats_p.albums_total == stats_s.albums_total == 20
+    assert stats_p.fetched_from == stats_s.fetched_from == {"fake": 20}
+    assert stats_p.files_embedded == stats_s.files_embedded == 40
+    assert stats_p.errors == stats_s.errors == 0
+    assert sorted(provider_parallel.calls) == sorted(provider_serial.calls)

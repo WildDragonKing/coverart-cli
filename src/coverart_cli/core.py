@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import csv
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -19,6 +21,10 @@ from coverart_cli.tagging import (
 )
 
 log = logging.getLogger(__name__)
+
+# Default number of parallel workers. Music libraries are mostly I/O-bound,
+# so 4 threads scale well without overwhelming third-party APIs.
+DEFAULT_WORKERS = 4
 
 
 @dataclass
@@ -53,6 +59,8 @@ class RunOptions:
     min_embedded_bytes: int = 0
     # If the existing cover is bigger than the newly-fetched one, keep the old one.
     keep_larger_existing: bool = True
+    # Parallelism — number of albums to process at once. I/O-bound, so threads.
+    workers: int = DEFAULT_WORKERS
 
 
 def find_album_dirs(root: Path) -> list[Path]:
@@ -89,9 +97,22 @@ def album_meta_for(album_dir: Path, *, fallback_to_dirnames: bool) -> AlbumMeta 
     return None
 
 
-def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
-    """Fetch + apply cover art for one album directory."""
-    stats.albums_total += 1
+def process_album(
+    album_dir: Path,
+    opts: RunOptions,
+    stats: RunStats,
+    stats_lock: threading.Lock | None = None,
+) -> None:
+    """Fetch + apply cover art for one album directory.
+
+    `stats_lock` serialises mutations to `stats` when called from multiple
+    threads; pass None when single-threaded.
+    """
+    from contextlib import nullcontext
+    lock = stats_lock if stats_lock is not None else nullcontext()
+
+    with lock:
+        stats.albums_total += 1
 
     # Decide whether to bother fetching anything at all.
     # Logic:
@@ -116,21 +137,24 @@ def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
         # Sidecar is the gatekeeper. If it exists and is big enough we're done.
         # The upgrade flag --min-bytes raises the size threshold the existing one must meet.
         if existing_sidecar is not None:
-            stats.sidecar_already += 1
+            with lock:
+                stats.sidecar_already += 1
             log.info("[skip]     %s (sidecar already meets quality bar)", album_dir.name)
             return
     else:
         # Embed-only mode: every audio file needs an embed of acceptable size.
         if existing_min_embed > 0 and existing_min_embed >= opts.min_embedded_bytes:
-            stats.sidecar_already += 1
+            with lock:
+                stats.sidecar_already += 1
             log.info("[skip]     %s (embeds already present)", album_dir.name)
             return
 
     meta = album_meta_for(album_dir, fallback_to_dirnames=opts.fallback_to_dirnames)
     if not meta:
         log.warning("[no-meta]  %s", album_dir)
-        stats.misses.append((album_dir, "no readable tags or directory metadata"))
-        stats.not_found += 1
+        with lock:
+            stats.misses.append((album_dir, "no readable tags or directory metadata"))
+            stats.not_found += 1
         return
 
     result: ProviderResult | None = None
@@ -141,8 +165,9 @@ def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
 
     if not result:
         log.info("[miss]     %s", meta)
-        stats.misses.append((album_dir, f"not found: {meta}"))
-        stats.not_found += 1
+        with lock:
+            stats.misses.append((album_dir, f"not found: {meta}"))
+            stats.not_found += 1
         return
 
     new_size = len(result.image_bytes)
@@ -158,11 +183,13 @@ def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
                 "[keep]     %s (existing %d B > new %d B)",
                 meta, existing_size_for_compare, new_size,
             )
-            stats.sidecar_already += 1
+            with lock:
+                stats.sidecar_already += 1
             return
 
     log.info("[%s] %s (%d B)", result.source, meta, new_size)
-    stats.record_fetch(result.source)
+    with lock:
+        stats.record_fetch(result.source)
 
     if opts.dry_run:
         return
@@ -172,22 +199,25 @@ def process_album(album_dir: Path, opts: RunOptions, stats: RunStats) -> None:
             write_sidecar(album_dir, result.image_bytes)
         except OSError as e:
             log.error("sidecar write failed for %s: %s", album_dir, e)
-            stats.errors += 1
+            with lock:
+                stats.errors += 1
 
     if opts.do_embed:
         for f in audio_files:
             cur = existing_embedded_size(f)
             replace_existing = cur > 0 and cur < opts.min_embedded_bytes
             if cur > 0 and not replace_existing:
-                stats.files_already_embedded += 1
+                with lock:
+                    stats.files_already_embedded += 1
                 continue
             if replace_existing:
                 _clear_embedded_cover(f)
             ok = embed_cover(f, result.image_bytes)
-            if ok:
-                stats.files_embedded += 1
-            else:
-                stats.errors += 1
+            with lock:
+                if ok:
+                    stats.files_embedded += 1
+                else:
+                    stats.errors += 1
 
 
 def _clear_embedded_cover(path: Path) -> None:
@@ -243,15 +273,36 @@ def run(opts: RunOptions) -> RunStats:
         raise ValueError("at least one provider must be configured")
 
     albums = find_album_dirs(opts.root)
-    log.info("scanning %d album directories under %s", len(albums), opts.root)
+    workers = max(1, opts.workers)
+    log.info(
+        "scanning %d album directories under %s (workers=%d)",
+        len(albums), opts.root, workers,
+    )
 
-    for album_dir in albums:
-        try:
-            process_album(album_dir, opts, stats)
-        except Exception as e:  # defensive — keep batch running
-            log.exception("unexpected error on %s: %s", album_dir, e)
-            stats.errors += 1
-            stats.misses.append((album_dir, f"crash: {e}"))
+    if workers == 1:
+        for album_dir in albums:
+            try:
+                process_album(album_dir, opts, stats)
+            except Exception as e:  # defensive — keep batch running
+                log.exception("unexpected error on %s: %s", album_dir, e)
+                stats.errors += 1
+                stats.misses.append((album_dir, f"crash: {e}"))
+    else:
+        stats_lock = threading.Lock()
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = {
+                ex.submit(process_album, d, opts, stats, stats_lock): d
+                for d in albums
+            }
+            for fut in as_completed(futures):
+                album_dir = futures[fut]
+                try:
+                    fut.result()
+                except Exception as e:
+                    log.exception("unexpected error on %s: %s", album_dir, e)
+                    with stats_lock:
+                        stats.errors += 1
+                        stats.misses.append((album_dir, f"crash: {e}"))
 
     if opts.missing_csv and stats.misses:
         _write_missing_csv(opts.missing_csv, stats.misses)

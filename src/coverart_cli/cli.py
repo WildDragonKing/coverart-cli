@@ -101,6 +101,13 @@ def build_parser() -> argparse.ArgumentParser:
              "(applies to both sidecar and embedded; 0 = never replace, the default)",
     )
     p.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        metavar="N",
+        help="number of albums to process in parallel (default: 4, set 1 for serial)",
+    )
+    p.add_argument(
         "--replace-smaller",
         action="store_true",
         help="when an existing cover is smaller than the newly fetched one, "
@@ -201,6 +208,7 @@ def main(argv: list[str] | None = None) -> int:
         min_sidecar_bytes=args.min_bytes,
         min_embedded_bytes=args.min_bytes,
         keep_larger_existing=not args.replace_smaller,
+        workers=args.workers,
     )
 
     try:
