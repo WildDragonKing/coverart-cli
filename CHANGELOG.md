@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1](https://github.com/WildDragonKing/coverart-cli/compare/v0.4.0...v0.4.1) (2026-05-18)
+
+
+### Bug Fixes
+
+* add workflow_dispatch + CodeRabbit badge ([#14](https://github.com/WildDragonKing/coverart-cli/issues/14)) ([ffe5bde](https://github.com/WildDragonKing/coverart-cli/commit/ffe5bded3dfcbb2277df9036fe322b1778124799))
+* redact secret query params before logging ([#17](https://github.com/WildDragonKing/coverart-cli/issues/17)) ([245d11f](https://github.com/WildDragonKing/coverart-cli/commit/245d11fa1e5e7fd8c261736992d6501f3572762b))
+* use absolute URL for screenshot so PyPI renders it ([#18](https://github.com/WildDragonKing/coverart-cli/issues/18)) ([8279679](https://github.com/WildDragonKing/coverart-cli/commit/82796794afa1d3ad0366853d0d7b7ec1a21e43ee))
+* use pepy.tech for PyPI downloads badge ([#16](https://github.com/WildDragonKing/coverart-cli/issues/16)) ([84099b3](https://github.com/WildDragonKing/coverart-cli/commit/84099b330b348f928d680fd2005ad8e6aa9bf184))
+
 ## [0.4.0](https://github.com/WildDragonKing/coverart-cli/compare/v0.3.0...v0.4.0) (2026-05-17)
 
 
