@@ -234,3 +234,22 @@ def write_sidecar(album_dir: Path, cover_bytes: bytes, *, prefer_png: bool = Fal
     dest = album_dir / f"cover{ext}"
     dest.write_bytes(cover_bytes)
     return dest
+
+
+__all__ = [
+    "AUDIO_EXTS",
+    "FLAC_EXTS",
+    "MIN_COVER_BYTES",
+    "MP3_EXTS",
+    "MP4_EXTS",
+    "OGG_EXTS",
+    "OPUS_EXTS",
+    "AlbumMeta",
+    "detect_image_mime",
+    "embed_cover",
+    "existing_embedded_size",
+    "find_sidecar",
+    "has_embedded_cover",
+    "read_album_meta",
+    "write_sidecar",
+]
