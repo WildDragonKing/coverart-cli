@@ -122,7 +122,9 @@ def process_album(
     existing_sidecar = (
         find_sidecar(album_dir, min_bytes=sidecar_threshold) if opts.do_sidecar else None
     )
-    audio_files = [f for f in album_dir.iterdir() if f.is_file() and f.suffix.lower() in AUDIO_EXTS]
+    audio_files = sorted(
+        f for f in album_dir.iterdir() if f.is_file() and f.suffix.lower() in AUDIO_EXTS
+    )
     existing_min_embed = (
         min((existing_embedded_size(f) for f in audio_files[:3]), default=0) if opts.do_embed else 0
     )
