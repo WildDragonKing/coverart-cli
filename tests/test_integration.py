@@ -8,6 +8,7 @@ These verify the full pipeline works:
   - skip-already-covered semantics
   - --min-bytes upgrade behaviour
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -181,9 +182,15 @@ def test_dry_run_changes_nothing(tmp_path: Path) -> None:
 @pytest.mark.parametrize("flag", ["do_embed", "do_sidecar"])
 def test_partial_output_modes(tmp_path: Path, flag: str) -> None:
     album_dir = _make_album(tmp_path, "Pink Floyd", "The Wall")
-    kwargs = {flag: True, ("do_sidecar" if flag == "do_embed" else "do_embed"): False}
 
-    run(RunOptions(root=tmp_path, providers=[FakeProvider()], **kwargs))
+    run(
+        RunOptions(
+            root=tmp_path,
+            providers=[FakeProvider()],
+            do_embed=flag == "do_embed",
+            do_sidecar=flag == "do_sidecar",
+        )
+    )
 
     if flag == "do_embed":
         assert not (album_dir / "cover.jpg").exists()
@@ -200,9 +207,7 @@ def test_parallel_processing_correctness(tmp_path: Path) -> None:
         _make_album(tmp_path, f"Artist {i:02d}", f"Album {i:02d}", tracks=2)
 
     provider_parallel = FakeProvider()
-    stats_p = run(
-        RunOptions(root=tmp_path, providers=[provider_parallel], workers=8)
-    )
+    stats_p = run(RunOptions(root=tmp_path, providers=[provider_parallel], workers=8))
 
     # Wipe sidecars so the second run actually does work.
     for sidecar in tmp_path.rglob("cover.jpg"):
@@ -214,9 +219,7 @@ def test_parallel_processing_correctness(tmp_path: Path) -> None:
         tags.save(str(track), v2_version=3)
 
     provider_serial = FakeProvider()
-    stats_s = run(
-        RunOptions(root=tmp_path, providers=[provider_serial], workers=1)
-    )
+    stats_s = run(RunOptions(root=tmp_path, providers=[provider_serial], workers=1))
 
     assert stats_p.albums_total == stats_s.albums_total == 20
     assert stats_p.fetched_from == stats_s.fetched_from == {"fake": 20}

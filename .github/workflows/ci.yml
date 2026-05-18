@@ -31,6 +31,8 @@ jobs:
           pip install -e ".[dev]"
       - name: Lint
         run: ruff check .
+      - name: Type check
+        run: pyrefly check
       - name: Unit + integration tests
         run: pytest --cov=coverart_cli --cov-report=term-missing
 
@@ -73,6 +75,9 @@ jobs:
           tags.add(TALB(encoding=3, text=["The Wall"]))
           tags.add(TIT2(encoding=3, text=["Mother"]))
           tags.save(str(p))
+          (p.parent / "cover.jpg").write_bytes(
+              b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 3000
+          )
           PY
       - name: Run end-to-end
         run: |

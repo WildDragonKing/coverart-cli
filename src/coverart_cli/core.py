@@ -1,4 +1,5 @@
 """Core workflow — iterate an album library, fetch + embed/sidecar cover art."""
+
 from __future__ import annotations
 
 import csv
@@ -70,10 +71,7 @@ def find_album_dirs(root: Path) -> list[Path]:
         if not d.is_dir() or d.name.startswith("."):
             continue
         try:
-            if any(
-                f.is_file() and f.suffix.lower() in AUDIO_EXTS
-                for f in d.iterdir()
-            ):
+            if any(f.is_file() and f.suffix.lower() in AUDIO_EXTS for f in d.iterdir()):
                 albums.append(d)
         except (PermissionError, OSError) as e:
             log.warning("cannot read %s: %s", d, e)
@@ -109,6 +107,7 @@ def process_album(
     threads; pass None when single-threaded.
     """
     from contextlib import nullcontext
+
     lock = stats_lock if stats_lock is not None else nullcontext()
 
     with lock:
@@ -123,14 +122,9 @@ def process_album(
     existing_sidecar = (
         find_sidecar(album_dir, min_bytes=sidecar_threshold) if opts.do_sidecar else None
     )
-    audio_files = [
-        f for f in album_dir.iterdir()
-        if f.is_file() and f.suffix.lower() in AUDIO_EXTS
-    ]
+    audio_files = [f for f in album_dir.iterdir() if f.is_file() and f.suffix.lower() in AUDIO_EXTS]
     existing_min_embed = (
-        min((existing_embedded_size(f) for f in audio_files[:3]), default=0)
-        if opts.do_embed
-        else 0
+        min((existing_embedded_size(f) for f in audio_files[:3]), default=0) if opts.do_embed else 0
     )
 
     if opts.do_sidecar:
@@ -181,7 +175,9 @@ def process_album(
         if existing_size_for_compare > new_size:
             log.info(
                 "[keep]     %s (existing %d B > new %d B)",
-                meta, existing_size_for_compare, new_size,
+                meta,
+                existing_size_for_compare,
+                new_size,
             )
             with lock:
                 stats.sidecar_already += 1
@@ -247,8 +243,9 @@ def _clear_embedded_cover(path: Path) -> None:
                 return
         elif suffix in MP4_EXTS:
             audio = MP4(path)
-            if "covr" in audio.tags:
-                del audio.tags["covr"]
+            tags = audio.tags
+            if tags is not None and "covr" in tags:
+                del tags["covr"]
                 audio.save()
         elif suffix in FLAC_EXTS:
             audio = FLAC(path)
@@ -276,7 +273,9 @@ def run(opts: RunOptions) -> RunStats:
     workers = max(1, opts.workers)
     log.info(
         "scanning %d album directories under %s (workers=%d)",
-        len(albums), opts.root, workers,
+        len(albums),
+        opts.root,
+        workers,
     )
 
     if workers == 1:
@@ -290,10 +289,7 @@ def run(opts: RunOptions) -> RunStats:
     else:
         stats_lock = threading.Lock()
         with ThreadPoolExecutor(max_workers=workers) as ex:
-            futures = {
-                ex.submit(process_album, d, opts, stats, stats_lock): d
-                for d in albums
-            }
+            futures = {ex.submit(process_album, d, opts, stats, stats_lock): d for d in albums}
             for fut in as_completed(futures):
                 album_dir = futures[fut]
                 try:

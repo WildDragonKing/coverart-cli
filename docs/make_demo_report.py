@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate a demo HTML report with public-domain example data — used for screenshots."""
+
 from __future__ import annotations
 
 import sys
@@ -16,10 +17,11 @@ def fetch_itunes(artist: str, album: str) -> str | None:
     import base64
     import json
     import urllib.parse
+    import urllib.request
 
-    params = urllib.parse.urlencode({
-        "term": f"{artist} {album}", "entity": "album", "limit": "1", "media": "music"
-    })
+    params = urllib.parse.urlencode(
+        {"term": f"{artist} {album}", "entity": "album", "limit": "1", "media": "music"}
+    )
     try:
         req = urllib.request.Request(
             f"https://itunes.apple.com/search?{params}",
