@@ -1,10 +1,12 @@
 """Reading album metadata from audio tags and embedding cover art back."""
+
 from __future__ import annotations
 
 import base64
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
 from mutagen import File as MutagenFile
 from mutagen.flac import FLAC, Picture
@@ -20,9 +22,7 @@ MP4_EXTS: frozenset[str] = frozenset({".m4a", ".m4b", ".mp4"})
 FLAC_EXTS: frozenset[str] = frozenset({".flac"})
 OGG_EXTS: frozenset[str] = frozenset({".ogg", ".oga"})
 OPUS_EXTS: frozenset[str] = frozenset({".opus"})
-AUDIO_EXTS: frozenset[str] = (
-    MP3_EXTS | MP4_EXTS | FLAC_EXTS | OGG_EXTS | OPUS_EXTS
-)
+AUDIO_EXTS: frozenset[str] = MP3_EXTS | MP4_EXTS | FLAC_EXTS | OGG_EXTS | OPUS_EXTS
 SIDECAR_NAMES: tuple[str, ...] = ("cover.jpg", "cover.png", "folder.jpg", "folder.png")
 MIN_COVER_BYTES = 2000
 
@@ -76,7 +76,7 @@ def existing_embedded_size(path: Path) -> int:
                 tags = ID3(path)
             except ID3NoHeaderError:
                 return 0
-            sizes = [len(t.data) for t in tags.values() if isinstance(t, APIC)]
+            sizes = [len(cast(Any, t).data) for t in tags.values() if isinstance(t, APIC)]
             return max(sizes) if sizes else 0
         if suffix in MP4_EXTS:
             audio = MP4(path)
@@ -133,7 +133,8 @@ def has_embedded_cover(path: Path) -> bool:
             return any(k.startswith("APIC") for k in tags)
         if suffix in MP4_EXTS:
             audio = MP4(path)
-            return "covr" in audio.tags and bool(audio.tags["covr"])
+            tags = audio.tags
+            return bool(tags and "covr" in tags and tags["covr"])
         if suffix in FLAC_EXTS:
             return bool(FLAC(path).pictures)
         if suffix in OGG_EXTS:
@@ -185,9 +186,14 @@ def _embed_mp3(path: Path, cover: bytes, mime: str) -> bool:
 
 def _embed_m4a(path: Path, cover: bytes, fmt: int) -> bool:
     audio = MP4(path)
-    if "covr" in audio.tags and audio.tags["covr"]:
+    if audio.tags is None:
+        audio.add_tags()
+    tags = audio.tags
+    if tags is None:
+        return False
+    if "covr" in tags and tags["covr"]:
         return True
-    audio.tags["covr"] = [MP4Cover(cover, imageformat=fmt)]
+    tags["covr"] = [MP4Cover(cover, imageformat=fmt)]
     audio.save()
     return True
 
@@ -228,3 +234,22 @@ def write_sidecar(album_dir: Path, cover_bytes: bytes, *, prefer_png: bool = Fal
     dest = album_dir / f"cover{ext}"
     dest.write_bytes(cover_bytes)
     return dest
+
+
+__all__ = [
+    "AUDIO_EXTS",
+    "FLAC_EXTS",
+    "MIN_COVER_BYTES",
+    "MP3_EXTS",
+    "MP4_EXTS",
+    "OGG_EXTS",
+    "OPUS_EXTS",
+    "AlbumMeta",
+    "detect_image_mime",
+    "embed_cover",
+    "existing_embedded_size",
+    "find_sidecar",
+    "has_embedded_cover",
+    "read_album_meta",
+    "write_sidecar",
+]

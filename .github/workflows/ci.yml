@@ -31,6 +31,8 @@ jobs:
           pip install -e ".[dev]"
       - name: Lint
         run: ruff check .
+      - name: Type check
+        run: pyrefly check
       - name: Unit + integration tests
         run: pytest --cov=coverart_cli --cov-report=term-missing
 
@@ -76,7 +78,27 @@ jobs:
           PY
       - name: Run end-to-end
         run: |
-          /tmp/smoke-venv/bin/coverart /tmp/fixture-lib -v
+          /tmp/smoke-venv/bin/python <<'PY'
+          from pathlib import Path
+
+          from coverart_cli.core import RunOptions, run
+          from coverart_cli.providers.base import CoverProvider, ProviderResult
+
+          class FixtureProvider(CoverProvider):
+              name = "fixture"
+              user_agent = "coverart-cli-smoke/1.0"
+
+              def fetch(self, artist, album):
+                  return ProviderResult(
+                      image_bytes=b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 3000,
+                      source=self.name,
+                      image_url="fixture://cover.jpg",
+                  )
+
+          stats = run(RunOptions(root=Path("/tmp/fixture-lib"), providers=[FixtureProvider()]))
+          assert stats.fetched_from == {"fixture": 1}
+          assert stats.files_embedded == 1
+          PY
           test -f "/tmp/fixture-lib/Pink Floyd/The Wall/cover.jpg" && echo "✓ cover.jpg written"
       - name: Generate HTML report against fixture
         run: |
