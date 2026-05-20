@@ -121,8 +121,10 @@ Commits to `main` follow [Conventional Commits](https://www.conventionalcommits.
 | `chore:`, `ci:`, `test:`        | hidden in changelog        |
 
 release-please opens a single rolling "Release PR" that accumulates the
-pending version. Merging that PR creates the git tag, which triggers the
-PyPI publish workflow.
+pending version. Merging that PR lets the release workflow create the GitHub
+Release and tag, then build and publish that exact tagged source distribution to
+PyPI. Do not push release tags by hand; if no GitHub Release was created, the
+release workflow did not complete the release.
 
 ## License
 
