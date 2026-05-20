@@ -4,6 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
     open-pull-requests-limit: 5
     groups:
       gh-actions:
@@ -12,6 +15,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
     open-pull-requests-limit: 5
     groups:
       python-deps:
