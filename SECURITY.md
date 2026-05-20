@@ -21,3 +21,21 @@ Only the latest minor release is supported with fixes.
 This project pins the minimum version of `mutagen` and otherwise relies on the
 Python standard library. Dependency vulnerabilities are tracked via GitHub's
 Dependabot.
+
+## Supply chain controls
+
+Security and supply chain integrity are release blockers for this repository.
+
+- Repository Actions default token permissions are read-only. Workflows opt in
+  to write or OIDC permissions only at the job that needs them.
+- Dependency Review runs on pull requests and fails when new runtime,
+  development, or unknown-scope dependencies introduce moderate-or-higher
+  vulnerabilities.
+- OpenSSF Scorecard runs on `main`, on a weekly schedule, and on demand. Results
+  are uploaded to code scanning and published to Scorecard's public API.
+- PyPI publishing uses Trusted Publishing with build attestations. Release jobs
+  publish only after Release Please creates a GitHub Release/tag and the tagged
+  source passes tests.
+- Auto-merge requires an explicit `AUTOMERGE_TOKEN` secret. The workflow
+  `GITHUB_TOKEN` must not merge PRs because workflow-created events can suppress
+  follow-up release workflows.
