@@ -126,6 +126,11 @@ Release and tag, then build and publish that exact tagged source distribution to
 PyPI. Do not push release tags by hand; if no GitHub Release was created, the
 release workflow did not complete the release.
 
+If auto-merge is enabled, configure the repository secret `AUTOMERGE_TOKEN` with
+a PAT or GitHub App token that can merge PRs. Do not use the workflow
+`GITHUB_TOKEN` for this: merges performed by workflow-created tokens can skip
+the follow-up `push` workflows that Release Please depends on.
+
 ## License
 
 [MIT](LICENSE)
