@@ -9,6 +9,8 @@ import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+MAX_HTTP_RESPONSE_BYTES = 20 * 1024 * 1024
+
 
 def _safe_url_for_log(url: str) -> str:
     """Return a URL safe for logs (scheme + host + path only)."""
@@ -55,6 +57,7 @@ class CoverProvider(ABC):
         timeout: int = 15,
         retries: int = 2,
         backoff: float = 1.0,
+        max_bytes: int = MAX_HTTP_RESPONSE_BYTES,
     ) -> bytes | None:
         """HTTP GET with retry on transient failures (5xx, timeout)."""
         last_err: Exception | None = None
@@ -62,7 +65,11 @@ class CoverProvider(ABC):
             req = urllib.request.Request(url, headers={"User-Agent": self.user_agent})
             try:
                 with urllib.request.urlopen(req, timeout=timeout) as r:
-                    return r.read()
+                    body = r.read(max_bytes + 1)
+                    if len(body) > max_bytes:
+                        log.debug("%s response too large", _safe_url_for_log(url))
+                        return None
+                    return body
             except urllib.error.HTTPError as e:
                 if e.code in (429, 500, 502, 503, 504) and attempt < retries:
                     log.debug(

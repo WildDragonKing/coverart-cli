@@ -1,10 +1,37 @@
 """Provider-level smoke tests (no network)."""
 from __future__ import annotations
 
+import urllib.request
+
 import pytest
 
+from coverart_cli.providers.base import CoverProvider
 from coverart_cli.providers.lastfm import LastFmProvider
 from coverart_cli.providers.musicbrainz import MusicBrainzProvider
+
+
+class DummyProvider(CoverProvider):
+    name = "dummy"
+    user_agent = "dummy/1.0"
+
+    def fetch(self, artist: str, album: str):
+        return None
+
+
+class FakeResponse:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+
+    def __enter__(self) -> FakeResponse:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def read(self, size: int = -1) -> bytes:
+        if size < 0:
+            return self.payload
+        return self.payload[:size]
 
 
 def test_lastfm_requires_key() -> None:
@@ -96,3 +123,23 @@ def test_safe_url_for_log_handles_garbage() -> None:
     # Anything urlsplit can parse should round-trip safely; nothing should crash.
     assert "<invalid-url>" not in _safe_url_for_log("https://example.com")
     assert _safe_url_for_log("") == ""
+
+
+def test_http_get_rejects_responses_over_size_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_urlopen(request: urllib.request.Request, timeout: int) -> FakeResponse:
+        return FakeResponse(b"x" * 11)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    result = DummyProvider()._http_get("https://example.com/cover.jpg", max_bytes=10)
+    assert result is None
+
+
+def test_http_get_accepts_responses_at_size_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_urlopen(request: urllib.request.Request, timeout: int) -> FakeResponse:
+        return FakeResponse(b"x" * 10)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    result = DummyProvider()._http_get("https://example.com/cover.jpg", max_bytes=10)
+    assert result == b"x" * 10
