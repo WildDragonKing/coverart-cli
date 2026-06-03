@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-* **security:** avoid personal path leaks in reports ([01d3742](https://github.com/WildDragonKing/coverart-cli/commit/01d3742591b21e8fa202437c9dba5dce5f568fb4))
 * **security:** avoid personal path leaks in reports ([#27](https://github.com/WildDragonKing/coverart-cli/issues/27)) ([01d3742](https://github.com/WildDragonKing/coverart-cli/commit/01d3742591b21e8fa202437c9dba5dce5f568fb4))
 
 ## [0.4.1](https://github.com/WildDragonKing/coverart-cli/compare/v0.4.0...v0.4.1) (2026-05-18)
