@@ -106,9 +106,22 @@ def test_build_report_substitutes_data(tmp_path: Path) -> None:
     assert "__REPORT_DATA__" not in html
     payload_text = html.replace("<html>", "").replace("</html>", "")
     payload = json.loads(payload_text)
-    assert payload["library_path"] == "/music"
+    assert payload["library_label"] == "music"
     assert payload["tool_version"]
     assert payload["albums"][0]["artist"] == "A"
+    assert "path" not in payload["albums"][0]
+
+
+def test_build_report_strips_home_path_from_library_label() -> None:
+    html = build_report([], library_path="/Users/alice/Music")
+    assert "/Users/alice" not in html
+    assert '"library_label": "Music"' in html
+
+
+def test_build_report_strips_windows_path_from_library_label() -> None:
+    html = build_report([], library_path=r"C:\Users\alice\Music")
+    assert r"C:\Users\alice" not in html
+    assert '"library_label": "Music"' in html
 
 
 def test_build_report_escapes_closing_script_tags() -> None:
@@ -136,3 +149,4 @@ def test_real_template_substitutes() -> None:
     html = build_report([], library_path="/tmp")
     assert "__REPORT_DATA__" not in html
     assert "Library" in html
+    assert "fonts.googleapis.com" not in html
