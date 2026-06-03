@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib import resources
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from coverart_cli import __version__
 from coverart_cli.tagging import (
@@ -39,7 +39,6 @@ class AlbumEntry:
         return {
             "artist": self.artist,
             "album": self.album,
-            "path": self.path,
             "has_cover": self.has_cover,
             "source": self.source,
             "file_count": self.file_count,
@@ -80,6 +79,15 @@ def _detect_source(album_dir: Path, has_any_cover: bool) -> str:
     so 'manual' is used as a generic 'covered but origin unknown'.
     """
     return "manual" if has_any_cover else "none"
+
+
+def _public_library_label(library_path: str) -> str:
+    """Return a report-safe library label without exposing absolute paths."""
+    if "\\" in library_path or ":" in library_path:
+        label = PureWindowsPath(library_path).name
+    else:
+        label = Path(library_path).name
+    return label or "Music library"
 
 
 def scan_library(root: Path, *, embed_thumbs: bool = True) -> list[AlbumEntry]:
@@ -142,7 +150,7 @@ def build_report(
 ) -> str:
     """Render the HTML report from a list of album entries."""
     payload = {
-        "library_path": library_path,
+        "library_label": _public_library_label(library_path),
         "generated_at": datetime.now(UTC).isoformat(),
         "tool_version": __version__,
         "albums": [e.to_dict() for e in entries],
