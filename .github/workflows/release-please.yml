@@ -3,46 +3,44 @@ name: Publish release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing published release tag to recover, for example v0.4.2
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: publish-${{ github.event.release.tag_name }}
+  group: publish-${{ github.event.release.tag_name || github.event.inputs.tag }}
   cancel-in-progress: false
 
 env:
-  RELEASE_TAG: ${{ github.event.release.tag_name }}
+  RELEASE_TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
 
 jobs:
-  test:
-    name: Release test (py${{ matrix.python-version }})
+  validate:
+    name: Validate release
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: ${{ env.RELEASE_TAG }}
-          persist-credentials: false
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install pinned development tools
-        run: python -m pip install --disable-pip-version-check -e ".[dev]"
-      - name: Verify tagged source
+      - name: Restrict recovery runs to main
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          ruff check .
-          pyrefly check
-          pytest
-
-  build:
-    name: Build and verify release artifacts
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Manual release recovery must run from main."
+            exit 1
+          fi
+      - name: Verify published GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          draft="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq .draft)"
+          if [ "$draft" != "false" ]; then
+            echo "::error::$RELEASE_TAG is not a published GitHub Release."
+            exit 1
+          fi
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ env.RELEASE_TAG }}
@@ -83,6 +81,43 @@ jobs:
           if f"## [{expected}]" not in changelog:
               raise SystemExit("CHANGELOG.md does not contain this release")
           PY
+
+  test:
+    name: Release test (py${{ matrix.python-version }})
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pinned development tools
+        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Verify tagged source
+        run: |
+          ruff check .
+          pyrefly check
+          pytest
+
+  build:
+    name: Build and verify release artifacts
+    needs: [validate, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
       - name: Build wheel and source distribution
         run: |
           python -m pip install --disable-pip-version-check build==1.5.1
