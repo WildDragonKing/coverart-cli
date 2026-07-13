@@ -39,6 +39,8 @@ Security and supply chain integrity are release blockers for this repository.
   publish only after Release Please creates a GitHub Release/tag, the tagged
   source passes Ruff, Pyrefly, and the full test suite on all supported Python
   versions, and the built wheel passes a clean installation smoke test.
+- PyPI trust is bound to `.github/workflows/release.yml` and the protected
+  `pypi` environment; the workflow filename is part of the publisher identity.
 - Pull requests require explicit merges after branch protection passes. Release
   preparation uses a short-lived, repository-scoped GitHub App token instead of
   a long-lived personal access token or the workflow `GITHUB_TOKEN`.
