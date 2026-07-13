@@ -36,6 +36,7 @@ dev = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "ruff==0.15.21",
+    "zizmor==1.26.1",
 ]
 
 [project.scripts]

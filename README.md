@@ -142,6 +142,9 @@ the stable publish identity even though Release Please itself runs in
 hand. A failed publish can be rerun from the same GitHub Actions run without
 introducing a second release path. Pull requests, including Release PRs and
 dependency updates, require an explicit merge after branch protection passes.
+GitHub Actions changes are gated by the repository's Zizmor security lint;
+third-party AI review remains advisory so availability limits cannot block
+security updates.
 
 ## License
 
