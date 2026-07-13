@@ -11,6 +11,7 @@ from coverart_cli import __version__
 from coverart_cli.config import load_config
 from coverart_cli.core import RunOptions, RunStats, run
 from coverart_cli.providers import (
+    CoverProvider,
     DeezerProvider,
     ITunesProvider,
     LastFmProvider,
@@ -177,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.report_only:
         return _do_report_only(args)
 
-    providers = []
+    providers: list[CoverProvider] = []
     if not args.no_lastfm and args.lastfm_key:
         providers.append(LastFmProvider(args.lastfm_key, user_agent=args.user_agent))
     elif not args.no_lastfm:

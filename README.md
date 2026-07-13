@@ -104,12 +104,13 @@ print(stats.fetched_from, stats.not_found)
 git clone https://github.com/WildDragonKing/coverart-cli && cd coverart-cli
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-pytest && ruff check .
+ruff check . && pyrefly check && pytest
 ```
 
 ## Releases
 
-Releases are fully automated via [release-please](https://github.com/googleapis/release-please-action).
+Releases are prepared by [release-please](https://github.com/googleapis/release-please-action)
+and published from an immutable Git tag via PyPI Trusted Publishing.
 Commits to `main` follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 | Commit prefix                   | Effect on next release     |
@@ -120,16 +121,27 @@ Commits to `main` follow [Conventional Commits](https://www.conventionalcommits.
 | `docs:`, `refactor:`, `perf:`   | changelog entry, no bump   |
 | `chore:`, `ci:`, `test:`        | hidden in changelog        |
 
-release-please opens a single rolling "Release PR" that accumulates the
-pending version. Merging that PR lets the release workflow create the GitHub
-Release and tag, then build and publish that exact tagged source distribution to
-PyPI. Do not push release tags by hand; if no GitHub Release was created, the
-release workflow did not complete the release.
+The `Prepare release` workflow uses a short-lived GitHub App token to open and
+update one rolling Release PR. Merging that PR creates the version tag and
+publishes the GitHub Release. Its `published` event triggers the isolated
+`Publish release` workflow, which verifies that the tag belongs to `main` and
+matches the package metadata and changelog. It builds one wheel and source
+distribution, attaches those exact files to the GitHub Release, and publishes
+them to PyPI with OIDC attestations.
 
-If auto-merge is enabled, configure the repository secret `AUTOMERGE_TOKEN` with
-a PAT or GitHub App token that can merge PRs. Do not use the workflow
-`GITHUB_TOKEN` for this: merges performed by workflow-created tokens can skip
-the follow-up `push` workflows that Release Please depends on.
+Configure a repository-scoped GitHub App with `Contents: read and write` and
+`Pull requests: read and write`, then set its App ID as the repository variable
+`RELEASE_APP_ID` and its private key as the repository secret
+`RELEASE_APP_PRIVATE_KEY`. The repository-wide setting that lets
+`GITHUB_TOKEN` create or approve pull requests can remain disabled.
+
+The PyPI Trusted Publisher must be restricted to this repository, the
+`release-please.yml` workflow, and the `pypi` environment. That filename remains
+the stable publish identity even though Release Please itself runs in
+`prepare-release.yml`. Do not create release tags or upload distributions by
+hand. A failed publish can be rerun from the same GitHub Actions run without
+introducing a second release path. Pull requests, including Release PRs and
+dependency updates, require an explicit merge after branch protection passes.
 
 ## License
 
