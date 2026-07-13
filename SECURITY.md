@@ -33,9 +33,12 @@ Security and supply chain integrity are release blockers for this repository.
   vulnerabilities.
 - OpenSSF Scorecard runs on `main`, on a weekly schedule, and on demand. Results
   are uploaded to code scanning and published to Scorecard's public API.
+- Every third-party GitHub Action is pinned to a full commit SHA. Zizmor audits
+  the workflows as a required pull-request check.
 - PyPI publishing uses Trusted Publishing with build attestations. Release jobs
-  publish only after Release Please creates a GitHub Release/tag and the tagged
-  source passes tests.
-- Auto-merge requires an explicit `AUTOMERGE_TOKEN` secret. The workflow
-  `GITHUB_TOKEN` must not merge PRs because workflow-created events can suppress
-  follow-up release workflows.
+  publish only after Release Please creates a GitHub Release/tag, the tagged
+  source passes Ruff, Pyrefly, and the full test suite on all supported Python
+  versions, and the built wheel passes a clean installation smoke test.
+- Pull requests require explicit merges after branch protection passes. Release
+  preparation uses a short-lived, repository-scoped GitHub App token instead of
+  a long-lived personal access token or the workflow `GITHUB_TOKEN`.
