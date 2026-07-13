@@ -136,8 +136,8 @@ Configure a repository-scoped GitHub App with `Contents: read and write` and
 `GITHUB_TOKEN` create or approve pull requests can remain disabled.
 
 The PyPI Trusted Publisher must be restricted to this repository, the
-`release-please.yml` workflow, and the `pypi` environment. That filename remains
-the stable publish identity even though Release Please itself runs in
+`release.yml` workflow, and the `pypi` environment. That filename is the stable
+publish identity even though Release Please itself runs in
 `prepare-release.yml`. Do not create release tags or upload distributions by
 hand. A failed publish can be rerun from the same GitHub Actions run without
 introducing a second release path. Historical releases can be recovered by

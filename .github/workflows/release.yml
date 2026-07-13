@@ -1,12 +1,14 @@
 name: Publish release
 
+# PyPI includes this filename in the Trusted Publisher identity. Do not rename it.
+
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing published release tag to recover, for example v0.4.2
+        description: Existing published release tag to recover, for example v1.2.3
         required: true
         type: string
 
@@ -52,7 +54,7 @@ jobs:
       - name: Validate tag and release metadata
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Release tag must be a stable semantic version such as v0.4.2."
+            echo "::error::Release tag must be a stable semantic version such as v1.2.3."
             exit 1
           fi
 
